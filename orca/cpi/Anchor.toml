@@ -1,0 +1,17 @@
+[features]
+seeds = false
+[programs.localnet]
+cpi_whirlpool = "HB95NrGYyYK45UsNy2u4S1cnyJPVrZuCwBggVJwUttuf"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "localnet"
+wallet = "artifacts/id.json"
+
+[profile.release]
+overflow-checks = true
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
