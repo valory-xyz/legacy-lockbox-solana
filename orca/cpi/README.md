@@ -21,6 +21,12 @@ Run the validator in a separate window:
 ./validator.sh
 ```
 
+Export environment variables:
+```
+export ANCHOR_PROVIDER_URL=http://127.0.0.1:8899
+export ANCHOR_WALLET=artifacts/id.json
+```
+
 Then, execute the testing script:
 ```
 solana airdrop 10000 9fit3w7t6FHATDaZWotpWqN7NpqgL3Lm1hqUop4hAy8h --url localhost && npx ts-node tests/cpi.ts

@@ -15,7 +15,6 @@ import expect from "expect";
 // UNIX/Linux/Mac
 // bash$ export ANCHOR_PROVIDER_URL=http://127.0.0.1:8899
 // bash$ export ANCHOR_WALLET=artifacts/id.json
-// bash$ ts-node this_script.ts
 
 async function main() {
   // Configure the client to use the local cluster.
