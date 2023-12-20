@@ -37,7 +37,7 @@ If the `@programId` in lib.rs does not match with the deployed one, update it an
 anchor build
 ```
 
-Versions
+NOTE: These versions actually guarantee tests to work correctly.
 ```
 anchor --version
 anchor-cli 0.26.0
