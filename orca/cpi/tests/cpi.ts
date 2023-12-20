@@ -217,6 +217,8 @@ async function main() {
   const liquidity = new anchor.BN(11464943);
   const minA = new anchor.BN(0);
   const minB = new anchor.BN(0);
+    
+  console.log("liquidity to decrease: 11464943");
 
   try {
       const signature = await program.rpc.decreaseLiquidity(liquidity, minA, minB, {
@@ -245,6 +247,8 @@ async function main() {
           console.error("Transaction Error:", error);
       }
   }
+  console.log("liquidity(after):", (await positionSDK.refreshData()).liquidity.toString());
+  
 }
 
 main();
