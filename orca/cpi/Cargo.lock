@@ -743,6 +743,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "liquidity_lockbox"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "solana-program",
+ "whirlpool",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
