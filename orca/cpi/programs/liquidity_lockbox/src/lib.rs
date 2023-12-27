@@ -38,7 +38,7 @@ pub mod liquidity_lockbox {
     bridged_token_mint: Pubkey,
     pda_bridged_token_account: Pubkey,
     pda_program_seed: String
-  ) -> ProgramResult {
+  ) -> Result<()> {
     let lockbox = &mut ctx.accounts.lockbox;
     lockbox.pool = pool;
     lockbox.bridged_token_mint = bridged_token_mint;
@@ -52,24 +52,31 @@ pub mod liquidity_lockbox {
     Ok(())
   }
 
-  // pub fn deposit() -> ProgramResult {
+  // pub fn deposit() -> Result<()> {
   //
   //   Ok(())
   // }
 
-  pub fn get_position_info(ctx: Context<DelegatedModifyLiquidity>) -> ProgramResult {
-    let position = &ctx.accounts.position.to_account_info();
-    let data = &position.data;//position.data.try_unwrap();//.readAddress(8);
-    let whirlpool = &data.readAddress(8);
-    // let pos = Pos {
-    //   whirlpool: position.whirlpool,
-    //   position_mint: position.position_mint,
-    //   liquidity: position.liquiduity,
-    //   tick_lower_index: position.tick_lower_index,
-    //   tick_upper_index: position.tick_upper_index
-    // }
+  pub fn get_position_info(ctx: Context<DelegatedModifyLiquidity>) -> Result<(Pubkey, u128)> {
+    let whirlpool = ctx.accounts.position.whirlpool;
+    let position_mint = ctx.accounts.position.position_mint;
+    let liquidity = ctx.accounts.position.liquidity;
 
-    Ok(())
+    // Check that the liquidity is within uint64 bounds
+    if liquidity > std::u64::MAX as u128 {
+      return Err(ErrorCode::OutOfRange.into());
+    }
+    let tick_lower_index = ctx.accounts.position.tick_lower_index;
+    let tick_upper_index = ctx.accounts.position.tick_upper_index;
+    // let pos = Pos::new(
+    //   whirlpool: ctx.accounts.position.whirlpool,
+    //   position_mint: ctx.accounts.position.position_mint,
+    //   liquidity: ctx.accounts.position.liquiduity,
+    //   tick_lower_index: ctx.accounts.position.tick_lower_index,
+    //   tick_upper_index: ctx.accounts.position.tick_upper_index
+    // );
+
+    Ok((position_mint, liquidity))
   }
 
   pub fn decrease_liquidity(
@@ -77,7 +84,7 @@ pub mod liquidity_lockbox {
     liquidity: u128,
     token_min_a: u64,
     token_min_b: u64,
-  ) -> ProgramResult {
+  ) -> Result<()> {
 
     msg!("begin");
 
@@ -143,15 +150,6 @@ pub struct LiquidityLockbox {
   pub position_pda_ata: Vec<Pubkey>,
   // Set of locked position liquidity amounts
   pub position_liquidity: Vec<u64>
-}
-
-
-pub struct Pos {
-  pub whirlpool: Pubkey,
-  pub position_mint: Pubkey,
-  pub liquidity: u128,
-  pub tick_lower_index: i32,
-  pub tick_upper_index: i32,
 }
 
 #[derive(Accounts)]
