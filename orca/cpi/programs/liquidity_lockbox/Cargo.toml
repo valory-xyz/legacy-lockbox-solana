@@ -21,5 +21,6 @@ overflow-checks = true
 [dependencies]
 anchor-lang = { git = "https://github.com/project-serum/anchor", tag = "v0.20.1", version = "0.20.1", package = "anchor-lang" }
 anchor-spl = { git = "https://github.com/project-serum/anchor", tag = "v0.20.1", version = "0.20.1", package = "anchor-spl" }
+spl-token = {version = "3.3", features = ["no-entrypoint"]}
 solana-program = "*"
 whirlpool = { git = "https://github.com/orca-so/whirlpools", tag = "0.2.0", package = "whirlpool", features = ["cpi"] }
