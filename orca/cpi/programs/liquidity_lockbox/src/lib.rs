@@ -5,6 +5,7 @@ use whirlpool::{
   self,
   state::{Whirlpool, TickArray, Position},
   cpi::accounts::ModifyLiquidity,
+  cpi::accounts::UpdateFeesAndRewards,
   math::sqrt_price_from_tick_index,
   math::{mul_u256, U256Muldiv},
   manager::liquidity_manager::calculate_liquidity_token_deltas,
@@ -197,9 +198,10 @@ pub mod liquidity_lockbox {
     // )?;
 
     // CPI to decrease liquidity
-    let cpi_program = ctx.accounts.whirlpool_program.to_account_info();
+    // TODO: find out how to keep the same cpi_program variable for all of the calls
+    let cpi_program_modify_liquidity = ctx.accounts.whirlpool_program.to_account_info();
     msg!("after cpi_program");
-    let cpi_accounts = ModifyLiquidity {
+    let cpi_accounts_modify_liquidity = ModifyLiquidity {
       whirlpool: ctx.accounts.whirlpool.to_account_info(),
       position: ctx.accounts.position.to_account_info(),
       position_authority: ctx.accounts.token_authority.to_account_info(),
@@ -210,15 +212,15 @@ pub mod liquidity_lockbox {
       token_owner_account_b: ctx.accounts.token_owner_account_b.to_account_info(),
       token_vault_a: ctx.accounts.token_vault_a.to_account_info(),
       token_vault_b: ctx.accounts.token_vault_b.to_account_info(),
-      token_program: ctx.accounts.token_program.to_account_info(),
+      token_program: ctx.accounts.token_program.to_account_info()
     };
     msg!("after cpi_accounts");
-    let cpi_ctx = CpiContext::new(
-      cpi_program,
-      cpi_accounts,
+    let cpi_ctx_modify_liquidity = CpiContext::new(
+      cpi_program_modify_liquidity,
+      cpi_accounts_modify_liquidity
     );
     msg!("before CPI");
-    whirlpool::cpi::decrease_liquidity(cpi_ctx, amount as u128, 0, 0)?;
+    whirlpool::cpi::decrease_liquidity(cpi_ctx_modify_liquidity, amount as u128, 0, 0)?;
 
     // Update the token remainder
     let remainder: u64 = position_liquidity - amount;
@@ -226,14 +228,20 @@ pub mod liquidity_lockbox {
     // If requested amount can be fully covered by the current position liquidity, close the position
     if remainder == 0 {
       // Update fees for the position
-      // AccountMeta[4] metasUpdateFees = [
-      //   AccountMeta({pubkey: pool, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: positionAddress, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: tx.accounts.tickArrayLower.key, is_writable: false, is_signer: false}),
-      //   AccountMeta({pubkey: tx.accounts.tickArrayUpper.key, is_writable: false, is_signer: false})
-      // ];
-      // whirlpool.updateFeesAndRewards{accounts: metasUpdateFees, seeds: [[pdaProgramSeed, pdaBump]]}();
-      //
+      let cpi_program_update_fees = ctx.accounts.whirlpool_program.to_account_info();
+      let cpi_accounts_update_fees = UpdateFeesAndRewards {
+        whirlpool: ctx.accounts.whirlpool.to_account_info(),
+        position: ctx.accounts.position.to_account_info(),
+        tick_array_lower: ctx.accounts.tick_array_lower.to_account_info(),
+        tick_array_upper: ctx.accounts.tick_array_upper.to_account_info()
+      };
+
+      let cpi_ctx_update_fees = CpiContext::new(
+        cpi_program_update_fees,
+        cpi_accounts_update_fees
+      );
+      whirlpool::cpi::update_fees_and_rewards(cpi_ctx_update_fees)?;
+      
       // // Collect fees from the position
       // AccountMeta[9] metasCollectFees = [
       //   AccountMeta({pubkey: pool, is_writable: true, is_signer: false}),
