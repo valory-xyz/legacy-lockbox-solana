@@ -34,8 +34,8 @@ pub mod liquidity_lockbox {
   // TODO: make the pool a constant variable
   //const WHIRLPOOL: Pubkey = pubkey!("");
   // Full range lower and upper indexes
-  const TICK_LOWER_INDEX: i32 = -443632;
-  const TICK_UPPER_INDEX: i32 = 443632;
+  const TICK_LOWER_INDEX: i32 = -443632; // -444928
+  const TICK_UPPER_INDEX: i32 = 443632; // 439296
   // Bridged token decimals
   const BRIDGED_TOKEN_DECIMALS: u8 = 9;
 
