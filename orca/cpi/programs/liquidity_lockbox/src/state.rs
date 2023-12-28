@@ -9,8 +9,6 @@ pub struct LiquidityLockbox {
   pub lockbox_bump: [u8; 1],
   // Bridged token mint address
   pub bridged_token_mint: Pubkey,
-  // PDA bridged ATA address
-  pub pda_bridged_token_account: Pubkey,
   // Total number of token accounts (even those that hold no positions anymore)
   pub num_position_accounts: u32,
   // First available account index in the set of accounts;
@@ -26,11 +24,10 @@ pub struct LiquidityLockbox {
 }
 
 impl LiquidityLockbox {
-  pub fn seeds(&self) -> [&[u8]; 4] {
+  pub fn seeds(&self) -> [&[u8]; 3] {
     [
       &b"liquidity_lockbox"[..],
       self.bridged_token_mint.as_ref(),
-      self.pda_bridged_token_account.as_ref(),
       self.lockbox_bump.as_ref(),
     ]
   }
@@ -39,12 +36,10 @@ impl LiquidityLockbox {
     &mut self,
     bump: u8,
     whirlpool: Pubkey,
-    bridged_token_mint: Pubkey,
-    pda_bridged_token_account: Pubkey
+    bridged_token_mint: Pubkey
   ) -> Result<()> {
     self.whirlpool = whirlpool;
     self.bridged_token_mint = bridged_token_mint;
-    self.pda_bridged_token_account = pda_bridged_token_account;
     self.num_position_accounts = 0;
     self.first_available_position_account_index = 0;
     self.total_liquidity = 0;

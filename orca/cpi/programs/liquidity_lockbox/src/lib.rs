@@ -51,8 +51,7 @@ pub mod liquidity_lockbox {
     Ok(lockbox.initialize(
       bump,
       whirlpool,
-      bridged_token_mint,
-      ctx.accounts.pda_bridged_token_account.key()
+      bridged_token_mint
     )?)
   }
 
@@ -86,6 +85,24 @@ pub mod liquidity_lockbox {
         },
       ),
       1,
+    )?;
+
+    // Close user position account
+    invoke_signed(
+      &close_account(
+        ctx.accounts.token_program.key,
+        ctx.accounts.position_token_account.to_account_info().key,
+        ctx.accounts.receiver.to_account_info().key,
+        ctx.accounts.position_authority.to_account_info().key,
+        &[],
+      )?,
+      &[
+        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.position_token_account.to_account_info(),
+        ctx.accounts.receiver.to_account_info(),
+        ctx.accounts.position_authority.to_account_info(),
+      ],
+      &[],
     )?;
 
     // Mint bridged tokens
@@ -141,38 +158,43 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::AmountExceedsPositionLiquidity.into());
     }
 
-    // Transfer bridged tokens to the pdaBridgedTokenAccount address of this program
-    token::transfer(
-      CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
-        Transfer {
-          from: ctx.accounts.bridged_token_account.to_account_info(),
-          to: ctx.accounts.pda_bridged_token_account.to_account_info(),
-          authority: ctx.accounts.token_authority.to_account_info(),
-        },
-      ),
-      amount,
-    )?;
-
-    // Burn acquired bridged tokens
+    // Burn provided amount of bridged tokens
     invoke_signed(
       &burn_checked(
         ctx.accounts.token_program.key,
-        ctx.accounts.pda_bridged_token_account.to_account_info().key,
+        ctx.accounts.bridged_token_account.to_account_info().key,
         ctx.accounts.bridged_token_mint.to_account_info().key,
-        ctx.accounts.lockbox.to_account_info().key,
-        &[ctx.accounts.lockbox.to_account_info().key],
-        1,
+        ctx.accounts.token_authority.to_account_info().key,
+        &[],
+        amount,
         BRIDGED_TOKEN_DECIMALS,
       )?,
       &[
         ctx.accounts.token_program.to_account_info(),
-        ctx.accounts.pda_bridged_token_account.to_account_info(),
+        ctx.accounts.bridged_token_account.to_account_info(),
         ctx.accounts.bridged_token_mint.to_account_info(),
-        ctx.accounts.lockbox.to_account_info(),
+        ctx.accounts.token_authority.to_account_info(),
       ],
-      &[&ctx.accounts.lockbox.seeds()],
+      &[]
     )?;
+
+    // // Close user account is it has zero amount of tokens
+    // invoke_signed(
+    //   &close_account(
+    //     token_program.key,
+    //     position_token_account.to_account_info().key,
+    //     receiver.key,
+    //     token_authority.key,
+    //     &[],
+    //   )?,
+    //   &[
+    //     token_program.to_account_info(),
+    //     position_token_account.to_account_info(),
+    //     receiver.to_account_info(),
+    //     token_authority.to_account_info(),
+    //   ],
+    //   &[],
+    // )?;
 
     // CPI to decrease liquidity
     let cpi_program = ctx.accounts.whirlpool_program.to_account_info();
@@ -251,24 +273,6 @@ pub mod liquidity_lockbox {
     // Update liquidity and its associated position account
     lockbox_mut.position_liquidity[idx] = remainder;
 
-    // // Close user account
-    // invoke_signed(
-    //   &close_account(
-    //     token_program.key,
-    //     position_token_account.to_account_info().key,
-    //     receiver.key,
-    //     token_authority.key,
-    //     &[],
-    //   )?,
-    //   &[
-    //     token_program.to_account_info(),
-    //     position_token_account.to_account_info(),
-    //     receiver.to_account_info(),
-    //     token_authority.to_account_info(),
-    //   ],
-    //   &[],
-    // )?;
-
     Ok(())
   }
 }
@@ -280,25 +284,17 @@ pub struct InitializeLiquidityLockbox<'info> {
   #[account(mut)]
   pub signer: Signer<'info>, //signer must sign the transaction to create accounts
 
-  // TODO: figure out if possible to initiate here, same as pda_bridged_token_account
   pub bridged_token_mint: Box<Account<'info, Mint>>,
 
   #[account(init,
     seeds = [
       b"liquidity_lockbox".as_ref(),
-      bridged_token_mint.key().as_ref(),
-      pda_bridged_token_account.key().as_ref()
+      bridged_token_mint.key().as_ref()
     ],
     bump,
     payer = signer,
     space = 10000)]
   pub lockbox: Box<Account<'info, LiquidityLockbox>>,
-
-  #[account(init,
-    payer = signer,
-    token::mint = bridged_token_mint,
-    token::authority = lockbox)]
-  pub pda_bridged_token_account: Box<Account<'info, TokenAccount>>,
 
   #[account(address = token::ID)]
   pub token_program: Program<'info, Token>,
@@ -336,6 +332,9 @@ pub struct DepositPositionForLiquidity<'info> {
   pub bridged_token_account: Account<'info, TokenAccount>,
 
   #[account(mut)]
+  pub receiver: Account<'info, TokenAccount>,
+
+  #[account(mut)]
   pub lockbox: Box<Account<'info, LiquidityLockbox>>,
   pub token_program: Program<'info, Token>
 }
@@ -349,13 +348,8 @@ pub struct WithdrawLiquidityForTokens<'info> {
 
   #[account(mut)]
   pub bridged_token_mint: Account<'info, Mint>,
-  #[account(mut,
-    constraint = bridged_token_account.mint == pda_bridged_token_account.mint,
-    constraint = bridged_token_account.mint == bridged_token_mint.key())]
+  #[account(mut, constraint = bridged_token_account.mint == bridged_token_mint.key())]
   pub bridged_token_account: Account<'info, TokenAccount>,
-
-  #[account(mut)]
-  pub pda_bridged_token_account: Account<'info, TokenAccount>,
 
   #[account(mut, has_one = whirlpool)]
   pub position: Account<'info, Position>,
