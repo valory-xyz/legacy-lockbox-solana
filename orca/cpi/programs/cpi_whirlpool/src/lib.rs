@@ -12,13 +12,13 @@ use whirlpool::{
 };
 use solana_program::{pubkey::Pubkey};
 
-declare_id!("HB95NrGYyYK45UsNy2u4S1cnyJPVrZuCwBggVJwUttuf");
+declare_id!("29i4A6jkwKbWBquwpxCYwu67Dc7wqgBXARgQcA1mhT34");
 
 #[program]
 pub mod cpi_whirlpool {
   use super::*;
 
-  pub fn increase_liquidity(ctx: Context<DelegatedModifyLiquidity>) -> ProgramResult {
+  pub fn increase_liquidity(ctx: Context<DelegatedModifyLiquidity>) -> Result<()> {
     // deposit 10.0 devSOL
     let amount_dev_sol = 1_000_000_000u64;
     // block to deposit over 10.0 devUSDC
@@ -91,7 +91,7 @@ pub mod cpi_whirlpool {
     liquidity: u128,
     token_min_a: u64,
     token_min_b: u64,
-  ) -> ProgramResult {
+  ) -> Result<()> {
 
     msg!("begin");
 
@@ -159,7 +159,7 @@ pub struct DelegatedModifyLiquidity<'info> {
 }
 
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
   OutOfRange,
   TooMuchAmount,

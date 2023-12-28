@@ -11,6 +11,14 @@ Install the dependencies:
 yarn
 ```
 
+If you need to remove / check dependencies, run:
+```
+cargo clean
+cargo tree
+```
+
+You might also want to completely remove the `Cargo.lock` file.
+
 Build the code with:
 ```
 anchor build

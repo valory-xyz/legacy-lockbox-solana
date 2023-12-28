@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use std::io::Result;
 
 #[account]
 pub struct LiquidityLockbox {

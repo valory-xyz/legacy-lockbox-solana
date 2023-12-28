@@ -3,6 +3,8 @@ overflow-checks = true
 
 [workspace]
 members = [
-    "programs/cpi_whirlpool",
     "programs/liquidity_lockbox"
+]
+exclude = [
+    "programs/cpi_whirlpool"
 ]

@@ -69,7 +69,7 @@ pub mod liquidity_lockbox {
     let tick_upper_index = ctx.accounts.position.tick_upper_index;
 
     // Transfer position
-    let position_token_account = ctx.accounts.position_token_account;
+    let position_token_account = ctx.accounts.position_token_account.to_account_info().key();
 
     // Mint bridged tokens
     invoke_signed(
@@ -188,7 +188,7 @@ pub struct DepositPositionForLiquidity<'info> {
 
   #[account(mut)]
   pub bridged_token_mint: Account<'info, Mint>,
-  #[account(mut, constraint = bridged_token_account.mint == bridged_token_mint)]
+  #[account(mut, constraint = bridged_token_account.mint == bridged_token_mint.key())]
   pub bridged_token_account: Account<'info, TokenAccount>,
 
   pub lockbox: Account<'info, LiquidityLockbox>,
@@ -230,7 +230,7 @@ pub struct DelegatedModifyLiquidity<'info> {
 }
 
 
-#[error]
+#[error_code]
 pub enum ErrorCode {
   Overflow,
   LiquidityZero,
