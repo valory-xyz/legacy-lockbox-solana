@@ -6,6 +6,8 @@ use whirlpool::{
   state::{Whirlpool, TickArray, Position},
   cpi::accounts::ModifyLiquidity,
   cpi::accounts::UpdateFeesAndRewards,
+  cpi::accounts::CollectFees,
+  cpi::accounts::ClosePosition,
   math::sqrt_price_from_tick_index,
   math::{mul_u256, U256Muldiv},
   manager::liquidity_manager::calculate_liquidity_token_deltas,
@@ -93,14 +95,14 @@ pub mod liquidity_lockbox {
       &close_account(
         ctx.accounts.token_program.key,
         ctx.accounts.position_token_account.to_account_info().key,
-        ctx.accounts.receiver.to_account_info().key,
+        ctx.accounts.position_authority.to_account_info().key,
         ctx.accounts.position_authority.to_account_info().key,
         &[],
       )?,
       &[
         ctx.accounts.token_program.to_account_info(),
         ctx.accounts.position_token_account.to_account_info(),
-        ctx.accounts.receiver.to_account_info(),
+        ctx.accounts.position_authority.to_account_info(),
         ctx.accounts.position_authority.to_account_info(),
       ],
       &[],
@@ -165,7 +167,7 @@ pub mod liquidity_lockbox {
         ctx.accounts.token_program.key,
         ctx.accounts.bridged_token_account.to_account_info().key,
         ctx.accounts.bridged_token_mint.to_account_info().key,
-        ctx.accounts.token_authority.to_account_info().key,
+        ctx.accounts.signer.to_account_info().key,
         &[],
         amount,
         BRIDGED_TOKEN_DECIMALS,
@@ -174,7 +176,7 @@ pub mod liquidity_lockbox {
         ctx.accounts.token_program.to_account_info(),
         ctx.accounts.bridged_token_account.to_account_info(),
         ctx.accounts.bridged_token_mint.to_account_info(),
-        ctx.accounts.token_authority.to_account_info(),
+        ctx.accounts.signer.to_account_info(),
       ],
       &[]
     )?;
@@ -184,15 +186,15 @@ pub mod liquidity_lockbox {
     //   &close_account(
     //     token_program.key,
     //     position_token_account.to_account_info().key,
-    //     receiver.key,
-    //     token_authority.key,
+    //     signer.key,
+    //     signer.key,
     //     &[],
     //   )?,
     //   &[
     //     token_program.to_account_info(),
     //     position_token_account.to_account_info(),
-    //     receiver.to_account_info(),
-    //     token_authority.to_account_info(),
+    //     signer.to_account_info(),
+    //     signer.to_account_info(),
     //   ],
     //   &[],
     // )?;
@@ -204,7 +206,7 @@ pub mod liquidity_lockbox {
     let cpi_accounts_modify_liquidity = ModifyLiquidity {
       whirlpool: ctx.accounts.whirlpool.to_account_info(),
       position: ctx.accounts.position.to_account_info(),
-      position_authority: ctx.accounts.token_authority.to_account_info(),
+      position_authority: ctx.accounts.lockbox.to_account_info(),
       position_token_account: ctx.accounts.pda_position_account.to_account_info(),
       tick_array_lower: ctx.accounts.tick_array_lower.to_account_info(),
       tick_array_upper: ctx.accounts.tick_array_upper.to_account_info(),
@@ -215,9 +217,12 @@ pub mod liquidity_lockbox {
       token_program: ctx.accounts.token_program.to_account_info()
     };
     msg!("after cpi_accounts");
-    let cpi_ctx_modify_liquidity = CpiContext::new(
+
+    let signer_seeds = &[&ctx.accounts.lockbox.seeds()[..]];
+    let cpi_ctx_modify_liquidity = CpiContext::new_with_signer(
       cpi_program_modify_liquidity,
-      cpi_accounts_modify_liquidity
+      cpi_accounts_modify_liquidity,
+      signer_seeds
     );
     msg!("before CPI");
     whirlpool::cpi::decrease_liquidity(cpi_ctx_modify_liquidity, amount as u128, 0, 0)?;
@@ -236,36 +241,51 @@ pub mod liquidity_lockbox {
         tick_array_upper: ctx.accounts.tick_array_upper.to_account_info()
       };
 
-      let cpi_ctx_update_fees = CpiContext::new(
+      let cpi_ctx_update_fees = CpiContext::new_with_signer(
         cpi_program_update_fees,
-        cpi_accounts_update_fees
+        cpi_accounts_update_fees,
+        signer_seeds
       );
       whirlpool::cpi::update_fees_and_rewards(cpi_ctx_update_fees)?;
-      
-      // // Collect fees from the position
-      // AccountMeta[9] metasCollectFees = [
-      //   AccountMeta({pubkey: pool, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: pdaProgram, is_writable: false, is_signer: true}),
-      //   AccountMeta({pubkey: positionAddress, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: pdaPositionAta, is_writable: false, is_signer: false}),
-      //   AccountMeta({pubkey: tx.accounts.userTokenAccountA.key, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: tx.accounts.tokenVaultA.key, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: tx.accounts.userTokenAccountB.key, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: tx.accounts.tokenVaultB.key, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: SplToken.tokenProgramId, is_writable: false, is_signer: false})
-      // ];
-      // whirlpool.collectFees{accounts: metasCollectFees, seeds: [[pdaProgramSeed, pdaBump]]}();
-      //
-      // // Close the position
-      // AccountMeta[6] metasClosePosition = [
-      //   AccountMeta({pubkey: pdaProgram, is_writable: false, is_signer: true}),
-      //   AccountMeta({pubkey: tx.accounts.userWallet.key, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: positionAddress, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: tx.accounts.positionMint.key, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: pdaPositionAta, is_writable: true, is_signer: false}),
-      //   AccountMeta({pubkey: SplToken.tokenProgramId, is_writable: false, is_signer: false})
-      // ];
-      // whirlpool.closePosition{accounts: metasClosePosition, seeds: [[pdaProgramSeed, pdaBump]]}();
+
+      // Collect fees from the position
+      let cpi_program_collect_fees = ctx.accounts.whirlpool_program.to_account_info();
+      let cpi_accounts_collect_fees = CollectFees {
+        whirlpool: ctx.accounts.whirlpool.to_account_info(),
+        position_authority: ctx.accounts.lockbox.to_account_info(),
+        position: ctx.accounts.position.to_account_info(),
+        position_token_account: ctx.accounts.pda_position_account.to_account_info(),
+        token_owner_account_a: ctx.accounts.token_owner_account_a.to_account_info(),
+        token_owner_account_b: ctx.accounts.token_owner_account_b.to_account_info(),
+        token_vault_a: ctx.accounts.token_vault_a.to_account_info(),
+        token_vault_b: ctx.accounts.token_vault_b.to_account_info(),
+        token_program: ctx.accounts.token_program.to_account_info()
+      };
+
+      let cpi_ctx_collect_fees = CpiContext::new_with_signer(
+        cpi_program_collect_fees,
+        cpi_accounts_collect_fees,
+        signer_seeds
+      );
+      whirlpool::cpi::collect_fees(cpi_ctx_collect_fees)?;
+
+      // Close the position
+      let cpi_program_close_position = ctx.accounts.whirlpool_program.to_account_info();
+      let cpi_accounts_close_position = ClosePosition {
+        position_authority: ctx.accounts.lockbox.to_account_info(),
+        receiver: ctx.accounts.signer.to_account_info(),
+        position: ctx.accounts.position.to_account_info(),
+        position_mint: ctx.accounts.position_mint.to_account_info(),
+        position_token_account: ctx.accounts.pda_position_account.to_account_info(),
+        token_program: ctx.accounts.token_program.to_account_info()
+      };
+
+      let cpi_ctx_close_position = CpiContext::new_with_signer(
+        cpi_program_close_position,
+        cpi_accounts_close_position,
+        signer_seeds
+      );
+      whirlpool::cpi::close_position(cpi_ctx_close_position)?;
     }
 
     // TODO: Check the CEI pattern if it makes sense, as it's not possible to declare the mutable before
@@ -310,13 +330,6 @@ pub struct InitializeLiquidityLockbox<'info> {
   pub rent: Sysvar<'info, Rent>
 }
 
-// @mutableAccount(position_token_account userPositionAccount)
-// @mutableAccount(pda_position_account pdaPositionAccount)
-// @mutableAccount(bridged_token_account userBridgedTokenAccount)
-// @mutableAccount(bridged_token_mint bridgedTokenMint)
-// @account(position)
-// @signer(position_authority userWallet)
-
 #[derive(Accounts)]
 pub struct DepositPositionForLiquidity<'info> {
   pub position_authority: Signer<'info>,
@@ -340,9 +353,6 @@ pub struct DepositPositionForLiquidity<'info> {
   pub bridged_token_account: Account<'info, TokenAccount>,
 
   #[account(mut)]
-  pub receiver: Account<'info, TokenAccount>,
-
-  #[account(mut)]
   pub lockbox: Box<Account<'info, LiquidityLockbox>>,
   pub token_program: Program<'info, Token>
 }
@@ -352,7 +362,7 @@ pub struct WithdrawLiquidityForTokens<'info> {
   #[account(mut)]
   pub whirlpool: Account<'info, Whirlpool>,
 
-  pub token_authority: Signer<'info>,
+  pub signer: Signer<'info>,
 
   #[account(mut)]
   pub bridged_token_mint: Account<'info, Mint>,
@@ -366,6 +376,9 @@ pub struct WithdrawLiquidityForTokens<'info> {
       constraint = pda_position_account.amount == 1
   )]
   pub pda_position_account: Box<Account<'info, TokenAccount>>,
+
+  #[account(mut, address = position.position_mint)]
+  pub position_mint: Account<'info, Mint>,
 
   #[account(mut, constraint = token_owner_account_a.mint == whirlpool.token_mint_a)]
   pub token_owner_account_a: Box<Account<'info, TokenAccount>>,
@@ -400,50 +413,12 @@ pub enum ErrorCode {
 }
 
 
-// LOGIC REFERENCE
-// increaseLiquidityQuoteByInputTokenWithParams >> quotePositionInRange
-// https://github.com/orca-so/whirlpools/blob/main/sdk/src/quotes/public/increase-liquidity-quote.ts#L167
-// getLiquidityFromTokenA
-// https://github.com/orca-so/whirlpools/blob/537306c096bcbbf9cb8d5cff337c989dcdd999b4/sdk/src/utils/position-util.ts#L69
-fn get_liquidity_from_token_a(amount: u128, sqrt_price_lower_x64: u128, sqrt_price_upper_x64: u128 ) -> Result<u128> {
-  // Δa = liquidity/sqrt_price_lower - liquidity/sqrt_price_upper
-  // liquidity = Δa * ((sqrt_price_lower * sqrt_price_upper) / (sqrt_price_upper - sqrt_price_lower))
-  assert!(sqrt_price_lower_x64 < sqrt_price_upper_x64);
-  let sqrt_price_diff = sqrt_price_upper_x64 - sqrt_price_lower_x64;
-
-  let numerator = mul_u256(sqrt_price_lower_x64, sqrt_price_upper_x64); // x64 * x64
-  let denominator = U256Muldiv::new(0, sqrt_price_diff); // x64
-
-  let (quotient, _remainder) = numerator.div(denominator, false);
-
-  let liquidity = quotient
-    .mul(U256Muldiv::new(0, amount))
-    .shift_word_right()
-    .try_into_u128()
-    .or(Err(ErrorCode::WhirlpoolNumberDownCastError.into()));
-  liquidity
-}
-// getLiquidityFromTokenB
-// https://github.com/orca-so/whirlpools/blob/537306c096bcbbf9cb8d5cff337c989dcdd999b4/sdk/src/utils/position-util.ts#L86
-fn _get_liquidity_from_token_b_not_implemented(_amount: u128, _sqrt_price_lower_x64: u128, _sqrt_price_upper_x64: u128 ) -> Result<u128> {
-  // Leave to not take the opportunity to improve skills...
-  Ok(0u128)
-}
-
-
 // to display println! : cargo test -- --nocapture
 #[cfg(test)]
 mod tests {
   use super::*;
 
   #[test]
-  fn test_get_liquidity_from_token_a() {
-    let r0 = get_liquidity_from_token_a(
-      100_000_000_000u128,
-      58319427345345388u128,
-      82674692782969588u128,
-    ).unwrap();
-    println!("r0 = {}", r0);
-    assert_eq!(r0, 1073181681u128);
+  fn test_test() {
   }
 }
