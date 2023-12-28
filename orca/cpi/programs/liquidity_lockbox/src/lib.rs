@@ -36,11 +36,14 @@ pub mod liquidity_lockbox {
 
   pub fn initialize(
     ctx: Context<InitializeLiquidityLockbox>,
-    _bumps: LockboxBumps,
     whirlpool: Pubkey
   ) -> Result<()> {
     let bridged_token_mint = ctx.accounts.bridged_token_mint.key();
+
+    // Get the lockbox account
     let lockbox = &mut ctx.accounts.lockbox;
+
+    // Get the anchor-derived bump
     let bump = *ctx.bumps.get("liquidity_lockbox").unwrap();
 
     Ok(lockbox.initialize(
@@ -65,11 +68,23 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::Overflow.into());
     }
 
+    let position_liquidity = liquidity as u64;
+
     let tick_lower_index = ctx.accounts.position.tick_lower_index;
     let tick_upper_index = ctx.accounts.position.tick_upper_index;
 
     // Transfer position
-    let position_token_account = ctx.accounts.position_token_account.to_account_info().key();
+    token::transfer(
+      CpiContext::new(
+        ctx.accounts.token_program.to_account_info(),
+        Transfer {
+          from: ctx.accounts.position_token_account.to_account_info(),
+          to: ctx.accounts.pda_position_account.to_account_info(),
+          authority: ctx.accounts.position_authority.to_account_info(),
+        },
+      ),
+      1,
+    )?;
 
     // Mint bridged tokens
     invoke_signed(
@@ -79,7 +94,7 @@ pub mod liquidity_lockbox {
         ctx.accounts.bridged_token_account.to_account_info().key,
         ctx.accounts.lockbox.to_account_info().key,
         &[ctx.accounts.lockbox.to_account_info().key],
-        liquidity as u64,
+        position_liquidity,
       )?,
       &[
         ctx.accounts.bridged_token_mint.to_account_info(),
@@ -89,6 +104,17 @@ pub mod liquidity_lockbox {
       ],
       &[&ctx.accounts.lockbox.seeds()],
     )?;
+
+    // Record position liquidity amount and its correspondent account address
+    let lockbox = &mut ctx.accounts.lockbox;
+    lockbox.position_accounts.push(ctx.accounts.position.key());
+    lockbox.position_pda_ata.push(ctx.accounts.pda_position_account.key());
+    lockbox.position_liquidity.push(position_liquidity);
+
+    // Increase the total number of positions
+    lockbox.num_position_accounts += 1;
+    // Increase the amount of total liquidity
+    lockbox.total_liquidity += position_liquidity;
 
     Ok(())
   }
@@ -137,7 +163,8 @@ pub struct InitializeLiquidityLockbox<'info> {
   #[account(mut)]
   pub signer: Signer<'info>, //signer must sign the transaction to create accounts
 
-  pub bridged_token_mint: Account<'info, Mint>,
+  // TODO: figure out if possible to initiate here, same as pda_bridged_token_account
+  pub bridged_token_mint: Box<Account<'info, Mint>>,
 
   #[account(init,
     seeds = [
@@ -173,12 +200,12 @@ pub struct InitializeLiquidityLockbox<'info> {
 pub struct DepositPositionForLiquidity<'info> {
   pub position_authority: Signer<'info>,
 
-  pub position: Account<'info, Position>,
+  pub position: Box<Account<'info, Position>>,
   #[account(mut,
     constraint = position_token_account.mint == position.position_mint,
     constraint = position_token_account.amount == 1
   )]
-  pub position_token_account: Account<'info, TokenAccount>,
+  pub position_token_account: Box<Account<'info, TokenAccount>>,
 
   #[account(mut,
     constraint = pda_position_account.mint == position.position_mint,
@@ -191,7 +218,8 @@ pub struct DepositPositionForLiquidity<'info> {
   #[account(mut, constraint = bridged_token_account.mint == bridged_token_mint.key())]
   pub bridged_token_account: Account<'info, TokenAccount>,
 
-  pub lockbox: Account<'info, LiquidityLockbox>,
+  #[account(mut)]
+  pub lockbox: Box<Account<'info, LiquidityLockbox>>,
   pub token_program: Program<'info, Token>
 }
 
