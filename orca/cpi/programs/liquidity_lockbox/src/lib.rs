@@ -125,6 +125,21 @@ pub mod liquidity_lockbox {
     ctx: Context<WithdrawLiquidityForTokens>,
     amount: u64,
   ) -> Result<()> {
+    // Get the lockbox state
+    let lockbox = &ctx.accounts.lockbox;
+
+    let idx: usize = lockbox.first_available_position_account_index as usize;
+    let position_liquidity: u64 = lockbox.position_liquidity[idx];
+    // TODO: check as this must never happen
+    // Check that the token account exists
+    if position_liquidity == 0 {
+      return Err(ErrorCode::LiquidityZero.into());
+    }
+
+    // Check the requested amount to be smaller or equal than the position liquidity
+    if amount > position_liquidity {
+      return Err(ErrorCode::AmountExceedsPositionLiquidity.into());
+    }
 
     // Transfer bridged tokens to the pdaBridgedTokenAccount address of this program
     token::transfer(
@@ -138,10 +153,6 @@ pub mod liquidity_lockbox {
       ),
       amount,
     )?;
-
-    // Decrease the total liquidity amount
-    let lockbox = &mut ctx.accounts.lockbox;
-    lockbox.total_liquidity -= amount;
 
     // Burn acquired bridged tokens
     invoke_signed(
@@ -188,12 +199,10 @@ pub mod liquidity_lockbox {
     whirlpool::cpi::decrease_liquidity(cpi_ctx, amount as u128, 0, 0)?;
 
     // Update the token remainder
-    uint64 remainder = positionLiquidity - amount;
-    // Update liquidity and its associated position account
-    mapPositionAccountLiquidity[positionAddress] = remainder;
+    let remainder: u64 = position_liquidity - amount;
 
     // If requested amount can be fully covered by the current position liquidity, close the position
-    if (remainder == 0) {
+    if remainder == 0 {
       // Update fees for the position
       // AccountMeta[4] metasUpdateFees = [
       //   AccountMeta({pubkey: pool, is_writable: true, is_signer: false}),
@@ -227,10 +236,20 @@ pub mod liquidity_lockbox {
       //   AccountMeta({pubkey: SplToken.tokenProgramId, is_writable: false, is_signer: false})
       // ];
       // whirlpool.closePosition{accounts: metasClosePosition, seeds: [[pdaProgramSeed, pdaBump]]}();
-
-      // Increase the first available position account index
-      lockbox.firstAvailablePositionAccountIndex += 1;
     }
+
+    // TODO: Check the CEI pattern if it makes sense, as it's not possible to declare the mutable before
+    let lockbox_mut = &mut ctx.accounts.lockbox;
+
+    if remainder == 0 {
+      // Increase the first available position account index
+      lockbox_mut.first_available_position_account_index += 1;
+    }
+
+    // Decrease the total liquidity amount
+    lockbox_mut.total_liquidity -= amount;
+    // Update liquidity and its associated position account
+    lockbox_mut.position_liquidity[idx] = remainder;
 
     // // Close user account
     // invoke_signed(
@@ -372,6 +391,7 @@ pub struct WithdrawLiquidityForTokens<'info> {
 pub enum ErrorCode {
   Overflow,
   LiquidityZero,
+  AmountExceedsPositionLiquidity,
   OutOfRange,
   TooMuchAmount,
   WhirlpoolNumberDownCastError,
