@@ -33,6 +33,8 @@ pub mod liquidity_lockbox {
   // Full range lower and upper indexes
   const TICK_LOWER_INDEX: i32 = -443632;
   const TICK_UPPER_INDEX: i32 = 443632;
+  // Bridged token decimals
+  const BRIDGED_TOKEN_DECIMALS: u8 = 9;
 
   pub fn initialize(
     ctx: Context<InitializeLiquidityLockbox>,
@@ -120,22 +122,55 @@ pub mod liquidity_lockbox {
   }
 
   pub fn decrease_liquidity(
-    ctx: Context<DelegatedModifyLiquidity>,
-    liquidity: u128,
-    token_min_a: u64,
-    token_min_b: u64,
+    ctx: Context<WithdrawLiquidityForTokens>,
+    amount: u64,
   ) -> Result<()> {
 
-    msg!("begin");
+    // Transfer bridged tokens to the pdaBridgedTokenAccount address of this program
+    token::transfer(
+      CpiContext::new(
+        ctx.accounts.token_program.to_account_info(),
+        Transfer {
+          from: ctx.accounts.bridged_token_account.to_account_info(),
+          to: ctx.accounts.pda_bridged_token_account.to_account_info(),
+          authority: ctx.accounts.token_authority.to_account_info(),
+        },
+      ),
+      amount,
+    )?;
 
-    // CPI
+    // Decrease the total liquidity amount
+    let lockbox = &mut ctx.accounts.lockbox;
+    lockbox.total_liquidity -= amount;
+
+    // Burn acquired bridged tokens
+    invoke_signed(
+      &burn_checked(
+        ctx.accounts.token_program.key,
+        ctx.accounts.pda_bridged_token_account.to_account_info().key,
+        ctx.accounts.bridged_token_mint.to_account_info().key,
+        ctx.accounts.lockbox.to_account_info().key,
+        &[ctx.accounts.lockbox.to_account_info().key],
+        1,
+        BRIDGED_TOKEN_DECIMALS,
+      )?,
+      &[
+        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.pda_bridged_token_account.to_account_info(),
+        ctx.accounts.bridged_token_mint.to_account_info(),
+        ctx.accounts.lockbox.to_account_info(),
+      ],
+      &[&ctx.accounts.lockbox.seeds()],
+    )?;
+
+    // CPI to decrease liquidity
     let cpi_program = ctx.accounts.whirlpool_program.to_account_info();
     msg!("after cpi_program");
     let cpi_accounts = ModifyLiquidity {
       whirlpool: ctx.accounts.whirlpool.to_account_info(),
       position: ctx.accounts.position.to_account_info(),
-      position_authority: ctx.accounts.position_authority.to_account_info(),
-      position_token_account: ctx.accounts.position_token_account.to_account_info(),
+      position_authority: ctx.accounts.token_authority.to_account_info(),
+      position_token_account: ctx.accounts.pda_position_account.to_account_info(),
       tick_array_lower: ctx.accounts.tick_array_lower.to_account_info(),
       tick_array_upper: ctx.accounts.tick_array_upper.to_account_info(),
       token_owner_account_a: ctx.accounts.token_owner_account_a.to_account_info(),
@@ -150,7 +185,70 @@ pub mod liquidity_lockbox {
       cpi_accounts,
     );
     msg!("before CPI");
-    whirlpool::cpi::decrease_liquidity(cpi_ctx, liquidity, token_min_a, token_min_b)?;
+    whirlpool::cpi::decrease_liquidity(cpi_ctx, amount as u128, 0, 0)?;
+
+    // Update the token remainder
+    uint64 remainder = positionLiquidity - amount;
+    // Update liquidity and its associated position account
+    mapPositionAccountLiquidity[positionAddress] = remainder;
+
+    // If requested amount can be fully covered by the current position liquidity, close the position
+    if (remainder == 0) {
+      // Update fees for the position
+      // AccountMeta[4] metasUpdateFees = [
+      //   AccountMeta({pubkey: pool, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: positionAddress, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: tx.accounts.tickArrayLower.key, is_writable: false, is_signer: false}),
+      //   AccountMeta({pubkey: tx.accounts.tickArrayUpper.key, is_writable: false, is_signer: false})
+      // ];
+      // whirlpool.updateFeesAndRewards{accounts: metasUpdateFees, seeds: [[pdaProgramSeed, pdaBump]]}();
+      //
+      // // Collect fees from the position
+      // AccountMeta[9] metasCollectFees = [
+      //   AccountMeta({pubkey: pool, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: pdaProgram, is_writable: false, is_signer: true}),
+      //   AccountMeta({pubkey: positionAddress, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: pdaPositionAta, is_writable: false, is_signer: false}),
+      //   AccountMeta({pubkey: tx.accounts.userTokenAccountA.key, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: tx.accounts.tokenVaultA.key, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: tx.accounts.userTokenAccountB.key, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: tx.accounts.tokenVaultB.key, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: SplToken.tokenProgramId, is_writable: false, is_signer: false})
+      // ];
+      // whirlpool.collectFees{accounts: metasCollectFees, seeds: [[pdaProgramSeed, pdaBump]]}();
+      //
+      // // Close the position
+      // AccountMeta[6] metasClosePosition = [
+      //   AccountMeta({pubkey: pdaProgram, is_writable: false, is_signer: true}),
+      //   AccountMeta({pubkey: tx.accounts.userWallet.key, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: positionAddress, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: tx.accounts.positionMint.key, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: pdaPositionAta, is_writable: true, is_signer: false}),
+      //   AccountMeta({pubkey: SplToken.tokenProgramId, is_writable: false, is_signer: false})
+      // ];
+      // whirlpool.closePosition{accounts: metasClosePosition, seeds: [[pdaProgramSeed, pdaBump]]}();
+
+      // Increase the first available position account index
+      lockbox.firstAvailablePositionAccountIndex += 1;
+    }
+
+    // // Close user account
+    // invoke_signed(
+    //   &close_account(
+    //     token_program.key,
+    //     position_token_account.to_account_info().key,
+    //     receiver.key,
+    //     token_authority.key,
+    //     &[],
+    //   )?,
+    //   &[
+    //     token_program.to_account_info(),
+    //     position_token_account.to_account_info(),
+    //     receiver.to_account_info(),
+    //     token_authority.to_account_info(),
+    //   ],
+    //   &[],
+    // )?;
 
     Ok(())
   }
@@ -224,19 +322,29 @@ pub struct DepositPositionForLiquidity<'info> {
 }
 
 #[derive(Accounts)]
-pub struct DelegatedModifyLiquidity<'info> {
+pub struct WithdrawLiquidityForTokens<'info> {
   #[account(mut)]
   pub whirlpool: Account<'info, Whirlpool>,
 
-  pub position_authority: Signer<'info>,
+  pub token_authority: Signer<'info>,
+
+  #[account(mut)]
+  pub bridged_token_mint: Account<'info, Mint>,
+  #[account(mut,
+    constraint = bridged_token_account.mint == pda_bridged_token_account.mint,
+    constraint = bridged_token_account.mint == bridged_token_mint.key())]
+  pub bridged_token_account: Account<'info, TokenAccount>,
+
+  #[account(mut)]
+  pub pda_bridged_token_account: Account<'info, TokenAccount>,
 
   #[account(mut, has_one = whirlpool)]
   pub position: Account<'info, Position>,
   #[account(
-      constraint = position_token_account.mint == position.position_mint,
-      constraint = position_token_account.amount == 1
+      constraint = pda_position_account.mint == position.position_mint,
+      constraint = pda_position_account.amount == 1
   )]
-  pub position_token_account: Box<Account<'info, TokenAccount>>,
+  pub pda_position_account: Box<Account<'info, TokenAccount>>,
 
   #[account(mut, constraint = token_owner_account_a.mint == whirlpool.token_mint_a)]
   pub token_owner_account_a: Box<Account<'info, TokenAccount>>,
@@ -253,6 +361,8 @@ pub struct DelegatedModifyLiquidity<'info> {
   #[account(mut, has_one = whirlpool)]
   pub tick_array_upper: AccountLoader<'info, TickArray>,
 
+  #[account(mut)]
+  pub lockbox: Box<Account<'info, LiquidityLockbox>>,
   pub whirlpool_program: Program<'info, whirlpool::program::Whirlpool>,
   pub token_program: Program<'info, Token>
 }
