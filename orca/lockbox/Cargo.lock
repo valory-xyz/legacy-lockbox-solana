@@ -517,20 +517,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 
 [[package]]
-name = "cpi_whirlpool"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "jobserver",
- "proc-macro-crate 1.2.1",
- "regex",
- "solana-program",
- "spl-token",
- "whirlpool",
-]
-
-[[package]]
 name = "cpufeatures"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -954,6 +940,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "liquidity_lockbox"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "jobserver",
+ "proc-macro-crate 1.2.1",
+ "regex",
+ "solana-program",
+ "spl-token",
+ "whirlpool",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -971,9 +971,9 @@ checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 
 [[package]]
 name = "memchr"
-version = "2.6.4"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
+checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 
 [[package]]
 name = "memmap2"
