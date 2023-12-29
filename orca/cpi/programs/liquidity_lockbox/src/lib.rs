@@ -7,15 +7,11 @@ use whirlpool::{
   cpi::accounts::ModifyLiquidity,
   cpi::accounts::UpdateFeesAndRewards,
   cpi::accounts::CollectFees,
-  cpi::accounts::ClosePosition,
-  math::sqrt_price_from_tick_index,
-  math::{mul_u256, U256Muldiv},
-  manager::liquidity_manager::calculate_liquidity_token_deltas,
+  cpi::accounts::ClosePosition
 };
 use solana_program::{pubkey::Pubkey, program::invoke_signed};
 use spl_token::instruction::{burn_checked, close_account, mint_to};
 pub use state::*;
-//use crate::{LiquidityLockbox, LockboxBumps};
 
 declare_id!("7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ");
 
@@ -26,16 +22,14 @@ pub mod liquidity_lockbox {
 
   // Orca Whirlpool program address
   const ORCA: Pubkey = pubkey!("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");
+  // TODO: Figure out if the header is needed at all
   // PDA header for position account
-  const PDA_HEADER: u64 = 0xd0f7407ae48fbcaa;
-  // TODO: figure out the program seed
-  // Program PDA seed
-  //const PDA_PROGRAM_SEED: String = String { str: "pdaProgram".into() };
+  //const PDA_HEADER: u64 = 0xd0f7407ae48fbcaa;
   // TODO: make the pool a constant variable
   //const WHIRLPOOL: Pubkey = pubkey!("");
   // Full range lower and upper indexes
-  const TICK_LOWER_INDEX: i32 = -443632; // -444928
-  const TICK_UPPER_INDEX: i32 = 443632; // 439296
+  const TICK_LOWER_INDEX: i32 = -443632; // -444928 for OLAS-SOL
+  const TICK_UPPER_INDEX: i32 = 443632; // 439296 for OLAS-SOL
   // Bridged token decimals
   const BRIDGED_TOKEN_DECIMALS: u8 = 9;
 
@@ -59,7 +53,6 @@ pub mod liquidity_lockbox {
   }
 
   pub fn deposit(ctx: Context<DepositPositionForLiquidity>) -> Result<()> {
-    let whirlpool = ctx.accounts.position.whirlpool;
     let position_mint = ctx.accounts.position.position_mint;
     let liquidity = ctx.accounts.position.liquidity;
     let tick_lower_index = ctx.accounts.position.tick_lower_index;
@@ -74,15 +67,18 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::Overflow.into());
     }
 
+    // Check tick values
     if tick_lower_index != TICK_LOWER_INDEX || tick_upper_index != TICK_UPPER_INDEX {
       return Err(ErrorCode::OutOfRange.into());
     }
 
+    // Check the PDA ownership
     let owner = ctx.accounts.position.to_account_info().owner;
     if owner != &ORCA {
       return Err(ErrorCode::WrongOwner.into());
     }
 
+    // Check the PDA address correctness
     let position_pda = Pubkey::try_find_program_address(&[b"position", position_mint.as_ref()], &ORCA);
     let position_pda_pubkey = position_pda.map(|(pubkey, _)| pubkey);
     if position_pda_pubkey.unwrap() != ctx.accounts.position.key() {
@@ -91,7 +87,7 @@ pub mod liquidity_lockbox {
 
     let position_liquidity = liquidity as u64;
 
-    // Transfer position
+    // Transfer position to the program PDA ATA
     token::transfer(
       CpiContext::new(
         ctx.accounts.token_program.to_account_info(),
@@ -175,6 +171,18 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::AmountExceedsPositionLiquidity.into());
     }
 
+    // Check the position address
+    let position_account = lockbox.position_accounts[idx];
+    if position_account != ctx.accounts.position.key() {
+      return Err(ErrorCode::WrongPositionAccount.into());
+    }
+
+    // Check the PDA position ATA
+    let pda_position_account = lockbox.position_pda_ata[idx];
+    if pda_position_account != ctx.accounts.pda_position_account.key() {
+      return Err(ErrorCode::WrongPDAPositionAccount.into());
+    }
+
     // Burn provided amount of bridged tokens
     invoke_signed(
       &burn_checked(
@@ -195,23 +203,7 @@ pub mod liquidity_lockbox {
       &[]
     )?;
 
-    // // Close user account is it has zero amount of tokens
-    // invoke_signed(
-    //   &close_account(
-    //     token_program.key,
-    //     position_token_account.to_account_info().key,
-    //     signer.key,
-    //     signer.key,
-    //     &[],
-    //   )?,
-    //   &[
-    //     token_program.to_account_info(),
-    //     position_token_account.to_account_info(),
-    //     signer.to_account_info(),
-    //     signer.to_account_info(),
-    //   ],
-    //   &[],
-    // )?;
+    // TODO: close user account if it has zero amount of tokens - do offchain
 
     // CPI to decrease liquidity
     // TODO: find out how to keep the same cpi_program variable for all of the calls
@@ -317,6 +309,58 @@ pub mod liquidity_lockbox {
 
     Ok(())
   }
+
+  pub fn get_liquidity_amounts_and_positions(ctx:Context<LiquidityLockboxState>, amount: u64)
+    -> Result<(Vec<u64>, Vec<Pubkey>, Vec<Pubkey>)>
+  {
+    let lockbox = &ctx.accounts.lockbox;
+
+    // Check the amount
+    if amount > lockbox.total_liquidity {
+      return Err(ErrorCode::AmountExceedsTotalLiquidity.into());
+    }
+
+    let mut liquidity_sum: u64 = 0;
+    let mut num_positions: u32 = 0;
+    let mut amount_left: u64 = 0;
+
+    // Get the number of allocated positions
+    let first: usize = lockbox.first_available_position_account_index as usize;
+    let last: usize = lockbox.num_position_accounts as usize;
+    for i in first..last {
+      let position_liquidity = lockbox.position_liquidity[i];
+
+      // // Increase a total calculated liquidity and a number of positions to return
+      liquidity_sum += position_liquidity;
+      num_positions += 1;
+
+      // Check if the accumulated liquidity is enough to cover the requested amount
+      if liquidity_sum >= amount {
+        amount_left = liquidity_sum - amount;
+        break;
+      }
+    }
+
+    // Allocate the necessary arrays and fill the values
+    let mut position_liquidity: Vec<u64> = Vec::new();
+    let mut position_accounts: Vec<Pubkey> = Vec::new();
+    let mut position_pda_ata: Vec<Pubkey> = Vec::new();
+    for i in 0..num_positions as usize {
+      let idx: usize = first + i;
+      position_accounts.push(lockbox.position_accounts[idx]);
+      position_liquidity.push(lockbox.position_liquidity[idx]);
+      position_pda_ata.push(lockbox.position_pda_ata[idx]);
+    }
+
+    // Adjust the last position, if it was not fully allocated
+    if num_positions > 0 && amount_left > 0 {
+      let idx: usize = num_positions as usize - 1;
+      position_liquidity[idx] = amount_left;
+    }
+
+    // Return the tuple wrapped in an Ok variant of Result
+    Ok((position_liquidity, position_accounts, position_pda_ata))
+  }
 }
 
 
@@ -357,7 +401,8 @@ pub struct DepositPositionForLiquidity<'info> {
 
   #[account(mut,
     constraint = pda_position_account.mint == position.position_mint,
-    constraint = pda_position_account.amount == 0
+    constraint = pda_position_account.amount == 0,
+    constraint = pda_position_account.owner == lockbox.key(),
   )]
   pub pda_position_account: Box<Account<'info, TokenAccount>>,
 
@@ -415,7 +460,14 @@ pub struct WithdrawLiquidityForTokens<'info> {
   #[account(mut)]
   pub lockbox: Box<Account<'info, LiquidityLockbox>>,
   pub whirlpool_program: Program<'info, whirlpool::program::Whirlpool>,
+
+  #[account(address = token::ID)]
   pub token_program: Program<'info, Token>
+}
+
+#[derive(Accounts)]
+pub struct LiquidityLockboxState<'info> {
+  pub lockbox: Box<Account<'info, LiquidityLockbox>>
 }
 
 
@@ -424,9 +476,12 @@ pub enum ErrorCode {
   Overflow,
   LiquidityZero,
   AmountExceedsPositionLiquidity,
+  AmountExceedsTotalLiquidity,
   OutOfRange,
   WrongOwner,
-  WrongPositionPDA
+  WrongPositionPDA,
+  WrongPositionAccount,
+  WrongPDAPositionAccount
 }
 
 

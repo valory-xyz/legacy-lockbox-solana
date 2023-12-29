@@ -44,6 +44,9 @@ impl LiquidityLockbox {
     self.first_available_position_account_index = 0;
     self.total_liquidity = 0;
     self.lockbox_bump = [bump];
+    self.position_liquidity = Vec::new();
+    self.position_accounts = Vec::new();
+    self.position_pda_ata = Vec::new();
 
     Ok(())
   }
