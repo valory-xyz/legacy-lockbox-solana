@@ -31,19 +31,18 @@ pub mod liquidity_lockbox {
   const TICK_LOWER_INDEX: i32 = -443632; // -444928 for OLAS-SOL
   const TICK_UPPER_INDEX: i32 = 443632; // 439296 for OLAS-SOL
   // Bridged token decimals
-  const BRIDGED_TOKEN_DECIMALS: u8 = 9;
+  const BRIDGED_TOKEN_DECIMALS: u8 = 8;
 
   pub fn initialize(
     ctx: Context<InitializeLiquidityLockbox>,
-    whirlpool: Pubkey
+    whirlpool: Pubkey,
+    bridged_token_mint: Pubkey
   ) -> Result<()> {
-    let bridged_token_mint = ctx.accounts.bridged_token_mint.key();
-
     // Get the lockbox account
     let lockbox = &mut ctx.accounts.lockbox;
 
     // Get the anchor-derived bump
-    let bump = *ctx.bumps.get("liquidity_lockbox").unwrap();
+    let bump = *ctx.bumps.get("lockbox").unwrap();
 
     Ok(lockbox.initialize(
       bump,
@@ -368,14 +367,11 @@ pub mod liquidity_lockbox {
 #[instruction(bumps: LockboxBumps)]
 pub struct InitializeLiquidityLockbox<'info> {
   #[account(mut)]
-  pub signer: Signer<'info>, //signer must sign the transaction to create accounts
-
-  pub bridged_token_mint: Box<Account<'info, Mint>>,
+  pub signer: Signer<'info>,
 
   #[account(init,
     seeds = [
-      b"liquidity_lockbox".as_ref(),
-      bridged_token_mint.key().as_ref()
+      b"liquidity_lockbox".as_ref()
     ],
     bump,
     payer = signer,
@@ -413,23 +409,24 @@ pub struct DepositPositionForLiquidity<'info> {
 
   #[account(mut)]
   pub lockbox: Box<Account<'info, LiquidityLockbox>>,
+  #[account(address = token::ID)]
   pub token_program: Program<'info, Token>
 }
 
 #[derive(Accounts)]
 pub struct WithdrawLiquidityForTokens<'info> {
   #[account(mut)]
-  pub whirlpool: Account<'info, Whirlpool>,
+  pub whirlpool: Box<Account<'info, Whirlpool>>,
 
   pub signer: Signer<'info>,
 
   #[account(mut)]
-  pub bridged_token_mint: Account<'info, Mint>,
+  pub bridged_token_mint: Box<Account<'info, Mint>>,
   #[account(mut, constraint = bridged_token_account.mint == bridged_token_mint.key())]
-  pub bridged_token_account: Account<'info, TokenAccount>,
+  pub bridged_token_account: Box<Account<'info, TokenAccount>>,
 
   #[account(mut, has_one = whirlpool)]
-  pub position: Account<'info, Position>,
+  pub position: Box<Account<'info, Position>>,
   #[account(
     constraint = pda_position_account.mint == position.position_mint,
     constraint = pda_position_account.amount == 1
@@ -440,7 +437,7 @@ pub struct WithdrawLiquidityForTokens<'info> {
     address = position.position_mint,
     constraint = position.whirlpool == whirlpool.key()
   )]
-  pub position_mint: Account<'info, Mint>,
+  pub position_mint: Box<Account<'info, Mint>>,
 
   #[account(mut, constraint = token_owner_account_a.mint == whirlpool.token_mint_a)]
   pub token_owner_account_a: Box<Account<'info, TokenAccount>>,

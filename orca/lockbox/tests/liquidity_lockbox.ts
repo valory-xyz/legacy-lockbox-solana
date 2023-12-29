@@ -2,7 +2,10 @@ import * as idl from "../target/idl/liquidity_lockbox.json";
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { LiquidityLockbox } from "../target/types/liquidity_lockbox";
-import { createMint, mintTo, transfer, getOrCreateAssociatedTokenAccount, unpackAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {
+  createMint, mintTo, transfer, getOrCreateAssociatedTokenAccount,
+  unpackAccount, TOKEN_PROGRAM_ID, AccountLayout
+} from "@solana/spl-token";
 import {
   WhirlpoolContext, buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID,
   PDAUtil, PoolUtil, PriceMath, increaseLiquidityQuoteByInputTokenWithParams,
@@ -105,22 +108,19 @@ async function main() {
       await ctx.connection.confirmTransaction({signature, ...latest_blockhash}, "confirmed");
 
     // Find a PDA account for the program
-    const [pdaProgram, bump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("pdaProgram", "utf-8")], program.programId);
+    const [pdaProgram, bump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("liquidity_lockbox", "utf-8")], program.programId);
     const bumpBytes = Buffer.from(new Uint8Array([bump]));
     console.log("Program PDA:", pdaProgram.toBase58());
 
     // Create new bridged token mint with the pda mint authority
-    const bridgedTokenMint = await createMint(provider.connection, userWallet, pdaProgram, null, 9);
+    const bridgedTokenMint = await createMint(provider.connection, userWallet, pdaProgram, null, 8);
     console.log("Bridged token mint:", bridgedTokenMint.toBase58());
 
     // Deploy the LiquidityLockbox program
     try {
         signature = await program.methods
-          .initialize(whirlpool)
-          .accounts({
-            lockbox: pdaProgram,
-            bridgedTokenMint: bridgedTokenMint
-          })
+          .initialize(whirlpool, bridgedTokenMint)
+          .accounts({ lockbox: pdaProgram })
           .rpc();
     } catch (error) {
         if (error instanceof Error && "message" in error) {
@@ -136,8 +136,6 @@ async function main() {
         signature: signature,
         ...(await provider.connection.getLatestBlockhash()),
     });
-
-    return;
 
     // Get all token accounts
     const token_accounts = (await ctx.connection.getTokenAccountsByOwner(ctx.wallet.publicKey, {programId: TOKEN_PROGRAM_ID})).value;
@@ -159,24 +157,24 @@ async function main() {
 
     // Get the ATA of the userWallet address, and if it does not exist, create it
     // This account has an NFT token
-    const userPositionAccount = parsed.address;
-    console.log("User ATA for NFT:", userPositionAccount.toBase58());
+    const positionTokenAccount = parsed.address;
+    console.log("User ATA for NFT:", positionTokenAccount.toBase58());
 
     // Get the ATA of the userWallet address, and if it does not exist, create it
     // This account will have bridged tokens
-    const userBridgedTokenAccount = await getOrCreateAssociatedTokenAccount(
+    const bridgedTokenAccount = await getOrCreateAssociatedTokenAccount(
         provider.connection,
         userWallet,
         bridgedTokenMint,
         userWallet.publicKey
     );
-    console.log("User ATA for bridged:", userBridgedTokenAccount.address.toBase58());
+    console.log("User ATA for bridged:", bridgedTokenAccount.address.toBase58());
 
-//    accountInfo = await provider.connection.getAccountInfo(userPositionAccount);
+//    accountInfo = await provider.connection.getAccountInfo(positionTokenAccount);
 //    console.log(accountInfo);
 
 //    let balance = await program.methods.getBalance()
-//      .accounts({account: userPositionAccount})
+//      .accounts({account: positionTokenAccount})
 //      .view();
 //    console.log("User ATA must have one NFT, balance:", balance.toNumber());
 
@@ -192,23 +190,23 @@ async function main() {
 
     // Get the tokenA ATA of the userWallet address, and if it does not exist, create it
     // This account will have bridged tokens
-    const userTokenAccountA = await getOrCreateAssociatedTokenAccount(
+    const tokenOwnerAccountA = await getOrCreateAssociatedTokenAccount(
         provider.connection,
         userWallet,
         token_a.mint,
         userWallet.publicKey
     );
-    console.log("User ATA for tokenA:", userTokenAccountA.address.toBase58());
+    console.log("User ATA for tokenA:", tokenOwnerAccountA.address.toBase58());
 
     // Get the tokenA ATA of the userWallet address, and if it does not exist, create it
     // This account will have bridged tokens
-    const userTokenAccountB = await getOrCreateAssociatedTokenAccount(
+    const tokenOwnerAccountB = await getOrCreateAssociatedTokenAccount(
         provider.connection,
         userWallet,
         token_b.mint,
         userWallet.publicKey
     );
-    console.log("User ATA for tokenB:", userTokenAccountB.address.toBase58());
+    console.log("User ATA for tokenB:", tokenOwnerAccountB.address.toBase58());
 
     // Get the status of the position
     const positionSDK = await client.getPosition(position.publicKey);
@@ -260,7 +258,7 @@ async function main() {
 //  // Create a transaction
 //  const decrease_liquidity_tx = await positionSDK.decreaseLiquidity(quote);
 //  // Overwrite the tokenA ATA as it is the only difference
-//  decrease_liquidity_tx.instructions[2].instructions[0].keys[5].pubkey = userTokenAccountA.address;
+//  decrease_liquidity_tx.instructions[2].instructions[0].keys[5].pubkey = tokenOwnerAccountA.address;
 //  console.log(decrease_liquidity_tx.instructions[2].instructions);
 //  console.log(decrease_liquidity_tx.instructions[2].instructions[0].keys);
 //
@@ -278,7 +276,7 @@ async function main() {
     // ############################## DEPOSIT ##############################
     console.log("\nSending position NFT to the program in exchange of bridged tokens");
 
-    const positionDataAccount = anchor.web3.Keypair.generate();
+//    const positionDataAccount = anchor.web3.Keypair.generate();
 
     // Create pseudo-position corresponding to the NFT
 //    await positionProgram.methods
@@ -291,50 +289,72 @@ async function main() {
 //    console.log(accountInfo);
 
     // Execute the correct deposit tx
-//    try {
-//        signature = await program.methods.deposit()
-//          .accounts(
-//              {
-//                lockbox: pdaProgram,
-//                userPositionAccount: userPositionAccount,
-//                pdaPositionAccount: pdaPositionAccount.address,
-//                userBridgedTokenAccount: userBridgedTokenAccount.address,
-//                bridgedTokenMint: bridgedTokenMint,
-//                position: position.publicKey,
-//                positionMint: positionMint,
-//                userWallet: userWallet.publicKey
-//              }
-//          )
-//          .signers([userWallet])
-//          .rpc();
-//    } catch (error) {
-//        if (error instanceof Error && "message" in error) {
-//            console.error("Program Error:", error);
-//            console.error("Error Message:", error.message);
-//        } else {
-//            console.error("Transaction Error:", error);
-//        }
-//    }
-//
-//    console.log("Deposit tx signature", signature);
-//    // Wait for program creation confirmation
-//    await provider.connection.confirmTransaction({
-//        signature: signature,
-//        ...(await provider.connection.getLatestBlockhash()),
-//    });
+    try {
+        signature = await program.methods.deposit()
+          .accounts(
+              {
+                lockbox: pdaProgram,
+                positionTokenAccount: positionTokenAccount,
+                pdaPositionAccount: pdaPositionAccount.address,
+                bridgedTokenAccount: bridgedTokenAccount.address,
+                bridgedTokenMint: bridgedTokenMint,
+                position: position.publicKey
+              }
+          )
+          .signers([userWallet])
+          .rpc();
+    } catch (error) {
+        if (error instanceof Error && "message" in error) {
+            console.error("Program Error:", error);
+            console.error("Error Message:", error.message);
+        } else {
+            console.error("Transaction Error:", error);
+        }
+    }
+
+    console.log("Deposit tx signature", signature);
+    // Wait for program creation confirmation
+    await provider.connection.confirmTransaction({
+        signature: signature,
+        ...(await provider.connection.getLatestBlockhash()),
+    });
+
+  let tokenAccounts = await provider.connection.getTokenAccountsByOwner(
+    pdaProgram,
+    { programId: TOKEN_PROGRAM_ID }
+  );
+
+  tokenAccounts.value.forEach((tokenAccount) => {
+    const accountData = AccountLayout.decode(tokenAccount.account.data);
+    if (accountData.mint.toString() === positionMint.toString()) {
+      console.log("PDA ATA is transferred the NFT, balance:", accountData.amount.toString());
+    }
+  });
+
+  tokenAccounts = await provider.connection.getTokenAccountsByOwner(
+    userWallet.publicKey,
+    { programId: TOKEN_PROGRAM_ID }
+  );
+
+  tokenAccounts.value.forEach((tokenAccount) => {
+    const accountData = AccountLayout.decode(tokenAccount.account.data);
+    if (accountData.mint.toString() == bridgedTokenMint.toString()) {
+      console.log("User ATA bridged balance now:", accountData.amount.toString());
+    }
+  });
 
 //    balance = await program.methods.getBalance()
 //      .accounts({account: pdaPositionAccount.address})
 //      .view();
-//    console.log("PDA ATA is transfered the NFT, balance:", balance.toNumber());
+//    console.log("PDA ATA is transferred the NFT, balance:", balance.toNumber());
 //
 //    balance = await program.methods.getBalance()
-//      .accounts({account: userPositionAccount})
+//      .accounts({account: positionTokenAccount})
 //      .view();
 //    console.log("User ATA NFT balance now:", balance.toNumber());
 //
 //    balance = await program.methods.getBalance()
-//      .accounts({account: userBridgedTokenAccount.address})
+//      .accounts({account: bridgedTokenAccount.address})
 //      .view();
 //    console.log("User ATA bridged balance now:", balance.toNumber());
 //    expect(data.liquidity.toNumber()).toEqual(balance.toNumber());
@@ -351,51 +371,64 @@ async function main() {
     // Transfer bridged tokens from the user to the program, decrease the position and send tokens back to the user
     const tBalalnce = new anchor.BN("20000000");
     // Get the data for tBalance
-    const result = await program.methods.getLiquidityAmountsAndPositions(tBalalnce)
-      .accounts({lockbox: pdaProgram})
-      .view();
-    // Check the addresses
-    expect(position.publicKey).toEqual(result.positionAddresses[0]);
-    expect(pdaPositionAccount.address).toEqual(result.positionPdaAtas[0]);
+//    const result = await program.methods.getLiquidityAmountsAndPositions(tBalalnce)
+//      .accounts({lockbox: pdaProgram})
+//      .view();
+//    // Check the addresses
+//    console.log(result);
+    //expect(position.publicKey).toEqual(result.positionAddresses[0]);
+    //expect(pdaPositionAccount.address).toEqual(result.positionPdaAtas[0]);
 
     // Execute the correct withdraw tx
-//    try {
-//        signature = await program.methods.withdraw(tBalalnce)
-//          .accounts(
-//              {
-//                lockbox: pdaProgram,
-//                whirlpool_programId: orca,
-//                pool: whirlpool,
-//                tokenProgramId: TOKEN_PROGRAM_ID,
-//                position: position.publicKey,
-//                userBridgedTokenAccount: userBridgedTokenAccount.address,
-//                userWallet: userWallet.publicKey,
-//                bridgedTokenMint: bridgedTokenMint,
-//                pdaPositionAccount: pdaPositionAccount.address,
-//                userTokenAccountA: userTokenAccountA.address,
-//                userTokenAccountB: userTokenAccountB.address,
-//                tokenVaultA: tokenVaultA,
-//                tokenVaultB: tokenVaultB,
-//                tickArrayLower: tickArrayLower,
-//                tickArrayUpper: tickArrayUpper,
-//                positionMint: positionMint,
-//                sig: userWallet.publicKey
-//              }
-//          )
-//          .signers([userWallet])
-//          .rpc();
-//    } catch (error) {
-//        if (error instanceof Error && "message" in error) {
-//            console.error("Program Error:", error);
-//            console.error("Error Message:", error.message);
-//        } else {
-//            console.error("Transaction Error:", error);
-//        }
-//    }
-//    console.log("Withdraw tx signature", signature);
+    try {
+        signature = await program.methods.withdraw(tBalalnce)
+          .accounts(
+              {
+                lockbox: pdaProgram,
+                whirlpoolProgram: orca,
+                whirlpool: whirlpool,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                position: position.publicKey,
+                positionMint: positionMint,
+                bridgedTokenAccount: bridgedTokenAccount.address,
+                bridgedTokenMint: bridgedTokenMint,
+                pdaPositionAccount: pdaPositionAccount.address,
+                tokenOwnerAccountA: tokenOwnerAccountA.address,
+                tokenOwnerAccountB: tokenOwnerAccountB.address,
+                tokenVaultA: tokenVaultA,
+                tokenVaultB: tokenVaultB,
+                tickArrayLower: tickArrayLower,
+                tickArrayUpper: tickArrayUpper
+              }
+          )
+          .signers([userWallet])
+          .rpc();
+    } catch (error) {
+        if (error instanceof Error && "message" in error) {
+            console.error("Program Error:", error);
+            console.error("Error Message:", error.message);
+        } else {
+            console.error("Transaction Error:", error);
+        }
+    }
+    console.log("Withdraw tx signature", signature);
+
+  tokenAccounts = await provider.connection.getTokenAccountsByOwner(
+    userWallet.publicKey,
+    { programId: TOKEN_PROGRAM_ID }
+  );
+
+  tokenAccounts.value.forEach((tokenAccount) => {
+    const accountData = AccountLayout.decode(tokenAccount.account.data);
+    if (accountData.mint.toString() == bridgedTokenMint.toString()) {
+      console.log("User ATA bridged balance now:", accountData.amount.toString());
+    }
+  });
+
+  console.log("Liquidity now:", (await positionSDK.refreshData()).liquidity.toString());
 
 //    balance = await program.methods.getBalance()
-//      .accounts({account: userBridgedTokenAccount.address})
+//      .accounts({account: bridgedTokenAccount.address})
 //      .view();
 //    console.log("User ATA bridged balance now:", balance.toNumber());
 //

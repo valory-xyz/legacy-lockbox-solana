@@ -24,11 +24,10 @@ pub struct LiquidityLockbox {
 }
 
 impl LiquidityLockbox {
-  pub fn seeds(&self) -> [&[u8]; 3] {
+  pub fn seeds(&self) -> [&[u8]; 2] {
     [
       &b"liquidity_lockbox"[..],
-      self.bridged_token_mint.as_ref(),
-      self.lockbox_bump.as_ref(),
+      self.lockbox_bump.as_ref()
     ]
   }
 
