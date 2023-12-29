@@ -21,7 +21,7 @@ async function main() {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  const PROGRAM_ID = new anchor.web3.PublicKey("HB95NrGYyYK45UsNy2u4S1cnyJPVrZuCwBggVJwUttuf");
+  const PROGRAM_ID = new anchor.web3.PublicKey("29i4A6jkwKbWBquwpxCYwu67Dc7wqgBXARgQcA1mhT34");
   const program = new Program(idl as anchor.Idl, PROGRAM_ID, anchor.getProvider()) as Program<CpiWhirlpool>;
 
   const orca = new anchor.web3.PublicKey("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");

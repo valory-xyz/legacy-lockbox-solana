@@ -37,7 +37,7 @@ export ANCHOR_WALLET=artifacts/id.json
 
 Then, execute the testing script:
 ```
-solana airdrop 10000 9fit3w7t6FHATDaZWotpWqN7NpqgL3Lm1hqUop4hAy8h --url localhost && npx ts-node tests/cpi.ts
+solana airdrop 10000 9fit3w7t6FHATDaZWotpWqN7NpqgL3Lm1hqUop4hAy8h --url localhost && npx ts-node tests/liquidity_lockbox.ts
 ```
 
 If the `@programId` in lib.rs does not match with the deployed one, update it and re-run
