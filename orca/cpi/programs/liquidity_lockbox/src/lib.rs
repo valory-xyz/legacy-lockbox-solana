@@ -62,6 +62,8 @@ pub mod liquidity_lockbox {
     let whirlpool = ctx.accounts.position.whirlpool;
     let position_mint = ctx.accounts.position.position_mint;
     let liquidity = ctx.accounts.position.liquidity;
+    let tick_lower_index = ctx.accounts.position.tick_lower_index;
+    let tick_upper_index = ctx.accounts.position.tick_upper_index;
 
     // Check for the zero liquidity in position
     if liquidity == 0 {
@@ -72,10 +74,22 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::Overflow.into());
     }
 
-    let position_liquidity = liquidity as u64;
+    if tick_lower_index != TICK_LOWER_INDEX || tick_upper_index != TICK_UPPER_INDEX {
+      return Err(ErrorCode::OutOfRange.into());
+    }
 
-    let tick_lower_index = ctx.accounts.position.tick_lower_index;
-    let tick_upper_index = ctx.accounts.position.tick_upper_index;
+    let owner = ctx.accounts.position.to_account_info().owner;
+    if owner != &ORCA {
+      return Err(ErrorCode::WrongOwner.into());
+    }
+
+    let position_pda = Pubkey::try_find_program_address(&[b"position", position_mint.as_ref()], &ORCA);
+    let position_pda_pubkey = position_pda.map(|(pubkey, _)| pubkey);
+    if position_pda_pubkey.unwrap() != ctx.accounts.position.key() {
+      return Err(ErrorCode::WrongPositionPDA.into());
+    }
+
+    let position_liquidity = liquidity as u64;
 
     // Transfer position
     token::transfer(
@@ -141,7 +155,7 @@ pub mod liquidity_lockbox {
     Ok(())
   }
 
-  pub fn decrease_liquidity(
+  pub fn withdraw(
     ctx: Context<WithdrawLiquidityForTokens>,
     amount: u64,
   ) -> Result<()> {
@@ -372,12 +386,15 @@ pub struct WithdrawLiquidityForTokens<'info> {
   #[account(mut, has_one = whirlpool)]
   pub position: Account<'info, Position>,
   #[account(
-      constraint = pda_position_account.mint == position.position_mint,
-      constraint = pda_position_account.amount == 1
+    constraint = pda_position_account.mint == position.position_mint,
+    constraint = pda_position_account.amount == 1
   )]
   pub pda_position_account: Box<Account<'info, TokenAccount>>,
 
-  #[account(mut, address = position.position_mint)]
+  #[account(mut,
+    address = position.position_mint,
+    constraint = position.whirlpool == whirlpool.key()
+  )]
   pub position_mint: Account<'info, Mint>,
 
   #[account(mut, constraint = token_owner_account_a.mint == whirlpool.token_mint_a)]
@@ -408,8 +425,8 @@ pub enum ErrorCode {
   LiquidityZero,
   AmountExceedsPositionLiquidity,
   OutOfRange,
-  TooMuchAmount,
-  WhirlpoolNumberDownCastError,
+  WrongOwner,
+  WrongPositionPDA
 }
 
 
