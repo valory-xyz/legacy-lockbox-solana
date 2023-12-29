@@ -366,7 +366,7 @@ async function main() {
 
 
     // ############################## WITHDRAW ##############################
-    console.log("\nSending bridged tokens back to the program in exchange of the NFT");
+    console.log("\nSending bridged tokens back to the program in exchange of the liquidity split in both tokens");
 
     // Transfer bridged tokens from the user to the program, decrease the position and send tokens back to the user
     const tBalalnce = new anchor.BN("20000000");
@@ -380,6 +380,7 @@ async function main() {
     //expect(pdaPositionAccount.address).toEqual(result.positionPdaAtas[0]);
 
     // Execute the correct withdraw tx
+    console.log("Amount of bridged tokens to withdraw:", tBalalnce.toString());
     try {
         signature = await program.methods.withdraw(tBalalnce)
           .accounts(
