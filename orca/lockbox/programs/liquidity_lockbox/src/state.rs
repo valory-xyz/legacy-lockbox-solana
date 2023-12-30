@@ -50,8 +50,3 @@ impl LiquidityLockbox {
     Ok(())
   }
 }
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default, Copy)]
-pub struct LockboxBumps {
-  pub lockbox_bump: u8,
-}

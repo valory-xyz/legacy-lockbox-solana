@@ -364,7 +364,6 @@ pub mod liquidity_lockbox {
 
 
 #[derive(Accounts)]
-#[instruction(bumps: LockboxBumps)]
 pub struct InitializeLiquidityLockbox<'info> {
   #[account(mut)]
   pub signer: Signer<'info>,
