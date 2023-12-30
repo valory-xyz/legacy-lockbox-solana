@@ -2,8 +2,14 @@
 Set of contracts to call various Orca Whirlpool functions via the CPI.
 
 ## Pre-requisites
-- Solana version: `solana-cli 1.17.7 (src:fca44b78; feat:3073089885, client:SolanaLabs)`;
-- Anchor version: `anchor-cli 0.29.0`.
+```
+anchor --version
+anchor-cli 0.26.0
+solana --version
+solana-cli 1.14.29 (src:36af529e; feat:139196142)
+rustc --version
+rustc 1.62.0 (a8314ef7d 2022-06-27)
+```
 
 ## Development
 Install the dependencies:
@@ -43,16 +49,6 @@ solana airdrop 10000 9fit3w7t6FHATDaZWotpWqN7NpqgL3Lm1hqUop4hAy8h --url localhos
 If the `@programId` in lib.rs does not match with the deployed one, update it and re-run
 ```
 anchor build
-```
-
-NOTE: These versions actually guarantee tests to work correctly.
-```
-anchor --version
-anchor-cli 0.26.0
-solana --version
-solana-cli 1.14.29 (src:36af529e; feat:139196142)
-rustc --version
-rustc 1.62.0 (a8314ef7d 2022-06-27)
 ```
 
 ## Acknowledgements
