@@ -142,8 +142,6 @@ pub mod liquidity_lockbox {
     lockbox.position_pda_ata.push(ctx.accounts.pda_position_account.key());
     lockbox.position_liquidity.push(position_liquidity);
 
-    // Increase the total number of positions
-    lockbox.num_position_accounts += 1;
     // Increase the amount of total liquidity
     lockbox.total_liquidity += position_liquidity;
 
@@ -157,7 +155,7 @@ pub mod liquidity_lockbox {
     // Get the lockbox state
     let lockbox = &ctx.accounts.lockbox;
 
-    let idx: usize = lockbox.first_available_position_account_index as usize;
+    let idx = lockbox.position_liquidity.len() - 1;
     let position_liquidity: u64 = lockbox.position_liquidity[idx];
     // TODO: check as this must never happen
     // Check that the token account exists
@@ -296,21 +294,69 @@ pub mod liquidity_lockbox {
     // TODO: Check the CEI pattern if it makes sense, as it's not possible to declare the mutable before
     let lockbox_mut = &mut ctx.accounts.lockbox;
 
+    // Check the position remainder
     if remainder == 0 {
-      // Increase the first available position account index
-      lockbox_mut.first_available_position_account_index += 1;
+      // Pop first queue elements
+      lockbox_mut.position_liquidity.pop();
+      lockbox_mut.position_accounts.pop();
+      lockbox_mut.position_pda_ata.pop();
+    } else {
+      // Update liquidity and its associated position account
+      lockbox_mut.position_liquidity[idx] = remainder;
     }
 
     // Decrease the total liquidity amount
     lockbox_mut.total_liquidity -= amount;
-    // Update liquidity and its associated position account
-    lockbox_mut.position_liquidity[idx] = remainder;
 
     Ok(())
   }
 
+//   pub fn get_liquidity_amount_and_position(ctx:Context<LiquidityLockboxState>, amount: u64)
+//     -> Result<Position2>
+//   {
+//     let lockbox = &ctx.accounts.lockbox;
+//
+//     // Get the number of allocated positions
+//     let idx = lockbox.position_liquidity.len() - 1;
+//     let position_liquidity = lockbox.position_liquidity[idx];
+//
+//     // Check the amount and correct, if given amount exceeds the available position liquidity
+//     let mut corrected_amount = amount;
+//     if amount > position_liquidity {
+//       corrected_amount = position_liquidity;
+//     }
+//
+//     let remainder = position_liquidity - corrected_amount;
+//     let pos: Position2 = {Position2{remainder: 10, corrected_amount: 100}};
+//
+//     return Ok(pos);
+//     //Ok(())
+//   }
+
+//   pub fn get_liquidity_amount_and_position(ctx:Context<LiquidityLockboxState>, amount: u64)
+//     -> Result<(u64, u64, Pubkey, Pubkey)>
+//   {
+//     let lockbox = &ctx.accounts.lockbox;
+//
+//     // Get the number of allocated positions
+//     let idx = lockbox.position_liquidity.len() - 1;
+//     let position_liquidity = lockbox.position_liquidity[idx];
+//
+//     // Check the amount and correct, if given amount exceeds the available position liquidity
+//     let mut corrected_amount = amount;
+//     if amount > position_liquidity {
+//       corrected_amount = position_liquidity;
+//     }
+//
+//     let remainder = position_liquidity - corrected_amount;
+//     let pos: Position2 = {Position2{remainder:10, }};
+//
+//     return Ok((remainder, corrected_amount, lockbox.position_accounts[idx], lockbox.position_pda_ata[idx]));
+//     //Ok(())
+//   }
+
   pub fn get_liquidity_amounts_and_positions(ctx:Context<LiquidityLockboxState>, amount: u64)
-    -> Result<(Vec<u64>, Vec<Pubkey>, Vec<Pubkey>)>
+    -> Result<AmountsAndPositions>
   {
     let lockbox = &ctx.accounts.lockbox;
 
@@ -323,12 +369,8 @@ pub mod liquidity_lockbox {
     let mut num_positions: u32 = 0;
     let mut amount_left: u64 = 0;
 
-    // Get the number of allocated positions
-    let first: usize = lockbox.first_available_position_account_index as usize;
-    let last: usize = lockbox.num_position_accounts as usize;
-    for i in first..last {
-      let position_liquidity = lockbox.position_liquidity[i];
-
+    // Get the number of allocated positions in the negative order, starting from the last one
+    for position_liquidity in lockbox.position_liquidity.iter().rev() {
       // // Increase a total calculated liquidity and a number of positions to return
       liquidity_sum += position_liquidity;
       num_positions += 1;
@@ -341,27 +383,38 @@ pub mod liquidity_lockbox {
     }
 
     // Allocate the necessary arrays and fill the values
-    let mut position_liquidity: Vec<u64> = Vec::new();
-    let mut position_accounts: Vec<Pubkey> = Vec::new();
-    let mut position_pda_ata: Vec<Pubkey> = Vec::new();
+    let mut pos = AmountsAndPositions {
+      position_liquidity: Vec::new(),
+      position_accounts: Vec::new(),
+      position_pda_ata: Vec::new()
+    };
+
+    // Get the last array index
+    let last = lockbox.position_accounts.len() - 1;
     for i in 0..num_positions as usize {
-      let idx: usize = first + i;
-      position_accounts.push(lockbox.position_accounts[idx]);
-      position_liquidity.push(lockbox.position_liquidity[idx]);
-      position_pda_ata.push(lockbox.position_pda_ata[idx]);
+      let idx = last - i;
+      pos.position_accounts.push(lockbox.position_accounts[idx]);
+      pos.position_liquidity.push(lockbox.position_liquidity[idx]);
+      pos.position_pda_ata.push(lockbox.position_pda_ata[idx]);
     }
 
     // Adjust the last position, if it was not fully allocated
     if num_positions > 0 && amount_left > 0 {
       let idx: usize = num_positions as usize - 1;
-      position_liquidity[idx] = amount_left;
+      pos.position_liquidity[idx] = amount_left;
     }
 
     // Return the tuple wrapped in an Ok variant of Result
-    Ok((position_liquidity, position_accounts, position_pda_ata))
+    Ok(pos)
   }
 }
 
+#[derive(Debug, Clone, AnchorSerialize, AnchorDeserialize)]
+pub struct AmountsAndPositions {
+  pub position_liquidity: Vec<u64>,
+  pub position_accounts: Vec<Pubkey>,
+  pub position_pda_ata: Vec<Pubkey>
+}
 
 #[derive(Accounts)]
 pub struct InitializeLiquidityLockbox<'info> {

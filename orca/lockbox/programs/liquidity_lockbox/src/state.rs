@@ -9,10 +9,6 @@ pub struct LiquidityLockbox {
   pub lockbox_bump: [u8; 1],
   // Bridged token mint address
   pub bridged_token_mint: Pubkey,
-  // Total number of token accounts (even those that hold no positions anymore)
-  pub num_position_accounts: u32,
-  // First available account index in the set of accounts;
-  pub first_available_position_account_index: u32,
   // Total liquidity in a lockbox
   pub total_liquidity: u64,
   // Set of locked position data accounts
@@ -39,8 +35,6 @@ impl LiquidityLockbox {
   ) -> Result<()> {
     self.whirlpool = whirlpool;
     self.bridged_token_mint = bridged_token_mint;
-    self.num_position_accounts = 0;
-    self.first_available_position_account_index = 0;
     self.total_liquidity = 0;
     self.lockbox_bump = [bump];
     self.position_liquidity = Vec::new();

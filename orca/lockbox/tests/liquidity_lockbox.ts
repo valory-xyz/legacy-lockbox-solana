@@ -371,11 +371,11 @@ async function main() {
     // Transfer bridged tokens from the user to the program, decrease the position and send tokens back to the user
     const tBalalnce = new anchor.BN("20000000");
     // Get the data for tBalance
-//    const result = await program.methods.getLiquidityAmountsAndPositions(tBalalnce)
-//      .accounts({lockbox: pdaProgram})
-//      .view();
-//    // Check the addresses
-//    console.log(result);
+    const result = await program.methods.getLiquidityAmountsAndPositions(tBalalnce)
+      .accounts({lockbox: pdaProgram})
+      .view();
+    // Check the addresses
+    console.log(result);
     //expect(position.publicKey).toEqual(result.positionAddresses[0]);
     //expect(pdaPositionAccount.address).toEqual(result.positionPdaAtas[0]);
 
