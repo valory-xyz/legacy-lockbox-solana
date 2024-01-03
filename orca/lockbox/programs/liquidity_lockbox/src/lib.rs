@@ -200,35 +200,10 @@ pub mod liquidity_lockbox {
       &[]
     )?;
 
-    // TODO: close user account if it has zero amount of tokens - do offchain
-
-    // CPI to decrease liquidity
-    // TODO: find out how to keep the same cpi_program variable for all of the calls
-    let cpi_program_modify_liquidity = ctx.accounts.whirlpool_program.to_account_info();
-    msg!("after cpi_program");
-    let cpi_accounts_modify_liquidity = ModifyLiquidity {
-      whirlpool: ctx.accounts.whirlpool.to_account_info(),
-      position: ctx.accounts.position.to_account_info(),
-      position_authority: ctx.accounts.lockbox.to_account_info(),
-      position_token_account: ctx.accounts.pda_position_account.to_account_info(),
-      tick_array_lower: ctx.accounts.tick_array_lower.to_account_info(),
-      tick_array_upper: ctx.accounts.tick_array_upper.to_account_info(),
-      token_owner_account_a: ctx.accounts.token_owner_account_a.to_account_info(),
-      token_owner_account_b: ctx.accounts.token_owner_account_b.to_account_info(),
-      token_vault_a: ctx.accounts.token_vault_a.to_account_info(),
-      token_vault_b: ctx.accounts.token_vault_b.to_account_info(),
-      token_program: ctx.accounts.token_program.to_account_info()
-    };
-    msg!("after cpi_accounts");
-
+    // Get program signer seeds
     let signer_seeds = &[&ctx.accounts.lockbox.seeds()[..]];
-    let cpi_ctx_modify_liquidity = CpiContext::new_with_signer(
-      cpi_program_modify_liquidity,
-      cpi_accounts_modify_liquidity,
-      signer_seeds
-    );
-    msg!("before CPI");
-    whirlpool::cpi::decrease_liquidity(cpi_ctx_modify_liquidity, amount as u128, 0, 0)?;
+
+    // TODO: close user account if it has zero amount of tokens - do offchain
 
     // Update the token remainder
     let remainder: u64 = position_liquidity - amount;
@@ -271,7 +246,34 @@ pub mod liquidity_lockbox {
         signer_seeds
       );
       whirlpool::cpi::collect_fees(cpi_ctx_collect_fees)?;
+    }
 
+    // CPI to decrease liquidity
+    // TODO: find out how to keep the same cpi_program variable for all of the calls
+    let cpi_program_modify_liquidity = ctx.accounts.whirlpool_program.to_account_info();
+    let cpi_accounts_modify_liquidity = ModifyLiquidity {
+      whirlpool: ctx.accounts.whirlpool.to_account_info(),
+      position: ctx.accounts.position.to_account_info(),
+      position_authority: ctx.accounts.lockbox.to_account_info(),
+      position_token_account: ctx.accounts.pda_position_account.to_account_info(),
+      tick_array_lower: ctx.accounts.tick_array_lower.to_account_info(),
+      tick_array_upper: ctx.accounts.tick_array_upper.to_account_info(),
+      token_owner_account_a: ctx.accounts.token_owner_account_a.to_account_info(),
+      token_owner_account_b: ctx.accounts.token_owner_account_b.to_account_info(),
+      token_vault_a: ctx.accounts.token_vault_a.to_account_info(),
+      token_vault_b: ctx.accounts.token_vault_b.to_account_info(),
+      token_program: ctx.accounts.token_program.to_account_info()
+    };
+
+    let cpi_ctx_modify_liquidity = CpiContext::new_with_signer(
+      cpi_program_modify_liquidity,
+      cpi_accounts_modify_liquidity,
+      signer_seeds
+    );
+    whirlpool::cpi::decrease_liquidity(cpi_ctx_modify_liquidity, amount as u128, 0, 0)?;
+
+    // If requested amount can be fully covered by the current position liquidity, close the position
+    if remainder == 0 {
       // Close the position
       let cpi_program_close_position = ctx.accounts.whirlpool_program.to_account_info();
       let cpi_accounts_close_position = ClosePosition {
@@ -310,50 +312,6 @@ pub mod liquidity_lockbox {
 
     Ok(())
   }
-
-//   pub fn get_liquidity_amount_and_position(ctx:Context<LiquidityLockboxState>, amount: u64)
-//     -> Result<Position2>
-//   {
-//     let lockbox = &ctx.accounts.lockbox;
-//
-//     // Get the number of allocated positions
-//     let idx = lockbox.position_liquidity.len() - 1;
-//     let position_liquidity = lockbox.position_liquidity[idx];
-//
-//     // Check the amount and correct, if given amount exceeds the available position liquidity
-//     let mut corrected_amount = amount;
-//     if amount > position_liquidity {
-//       corrected_amount = position_liquidity;
-//     }
-//
-//     let remainder = position_liquidity - corrected_amount;
-//     let pos: Position2 = {Position2{remainder: 10, corrected_amount: 100}};
-//
-//     return Ok(pos);
-//     //Ok(())
-//   }
-
-//   pub fn get_liquidity_amount_and_position(ctx:Context<LiquidityLockboxState>, amount: u64)
-//     -> Result<(u64, u64, Pubkey, Pubkey)>
-//   {
-//     let lockbox = &ctx.accounts.lockbox;
-//
-//     // Get the number of allocated positions
-//     let idx = lockbox.position_liquidity.len() - 1;
-//     let position_liquidity = lockbox.position_liquidity[idx];
-//
-//     // Check the amount and correct, if given amount exceeds the available position liquidity
-//     let mut corrected_amount = amount;
-//     if amount > position_liquidity {
-//       corrected_amount = position_liquidity;
-//     }
-//
-//     let remainder = position_liquidity - corrected_amount;
-//     let pos: Position2 = {Position2{remainder:10, }};
-//
-//     return Ok((remainder, corrected_amount, lockbox.position_accounts[idx], lockbox.position_pda_ata[idx]));
-//     //Ok(())
-//   }
 
   pub fn get_liquidity_amounts_and_positions(ctx:Context<LiquidityLockboxState>, amount: u64)
     -> Result<AmountsAndPositions>
@@ -479,7 +437,7 @@ pub struct WithdrawLiquidityForTokens<'info> {
 
   #[account(mut, has_one = whirlpool)]
   pub position: Box<Account<'info, Position>>,
-  #[account(
+  #[account(mut,
     constraint = pda_position_account.mint == position.position_mint,
     constraint = pda_position_account.amount == 1
   )]

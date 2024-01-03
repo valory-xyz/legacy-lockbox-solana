@@ -343,6 +343,9 @@ async function main() {
     }
   });
 
+  let stateData = await program.account.liquidityLockbox.fetch(pdaProgram);
+  expect(data.liquidity.toString()).toEqual(stateData.totalLiquidity.toString());
+
 //    balance = await program.methods.getBalance()
 //      .accounts({account: pdaPositionAccount.address})
 //      .view();
@@ -369,15 +372,14 @@ async function main() {
     console.log("\nSending bridged tokens back to the program in exchange of the liquidity split in both tokens");
 
     // Transfer bridged tokens from the user to the program, decrease the position and send tokens back to the user
-    const tBalalnce = new anchor.BN("20000000");
+    const tBalalnce = data.liquidity;//new anchor.BN("20000000");
     // Get the data for tBalance
     const result = await program.methods.getLiquidityAmountsAndPositions(tBalalnce)
       .accounts({lockbox: pdaProgram})
       .view();
     // Check the addresses
-    console.log(result);
-    //expect(position.publicKey).toEqual(result.positionAddresses[0]);
-    //expect(pdaPositionAccount.address).toEqual(result.positionPdaAtas[0]);
+    expect(position.publicKey).toEqual(result.positionAccounts[0]);
+    expect(pdaPositionAccount.address).toEqual(result.positionPdaAta[0]);
 
     // Execute the correct withdraw tx
     console.log("Amount of bridged tokens to withdraw:", tBalalnce.toString());
@@ -426,7 +428,8 @@ async function main() {
     }
   });
 
-  console.log("Liquidity now:", (await positionSDK.refreshData()).liquidity.toString());
+  stateData = await program.account.liquidityLockbox.fetch(pdaProgram);
+  console.log("Liquidity now:", stateData.totalLiquidity.toString());
 
 //    balance = await program.methods.getBalance()
 //      .accounts({account: bridgedTokenAccount.address})
