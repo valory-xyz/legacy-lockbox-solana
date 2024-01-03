@@ -205,11 +205,6 @@ pub mod liquidity_lockbox {
 
     // TODO: close user account if it has zero amount of tokens - do offchain
 
-    // Update the token remainder
-    let remainder: u64 = position_liquidity - amount;
-
-    // If requested amount can be fully covered by the current position liquidity, close the position
-    if remainder == 0 {
       // Update fees for the position
       let cpi_program_update_fees = ctx.accounts.whirlpool_program.to_account_info();
       let cpi_accounts_update_fees = UpdateFeesAndRewards {
@@ -246,7 +241,6 @@ pub mod liquidity_lockbox {
         signer_seeds
       );
       whirlpool::cpi::collect_fees(cpi_ctx_collect_fees)?;
-    }
 
     // CPI to decrease liquidity
     // TODO: find out how to keep the same cpi_program variable for all of the calls
@@ -271,6 +265,9 @@ pub mod liquidity_lockbox {
       signer_seeds
     );
     whirlpool::cpi::decrease_liquidity(cpi_ctx_modify_liquidity, amount as u128, 0, 0)?;
+
+    // Update the token remainder
+    let remainder: u64 = position_liquidity - amount;
 
     // If requested amount can be fully covered by the current position liquidity, close the position
     if remainder == 0 {
