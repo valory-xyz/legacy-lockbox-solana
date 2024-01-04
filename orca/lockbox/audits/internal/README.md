@@ -101,7 +101,7 @@ https://medium.com/@zokyo.io/what-hackers-look-for-in-a-solana-smart-contract-17
 N/A
 
 2. Missing ownership checks (e.g., by checking  AccountInfo::owner) <br>
-Example: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/1-account-data-matching/recommended/src/lib.rs
+Example: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/1-account-data-matching/recommended/src/lib.rs <br>
 In progress.
 
 3. Missing rent exemption checks <br>
@@ -145,13 +145,13 @@ Passed.
 ? In progress
 
 #### General notes not specific to Solana/Rust. Critical
-No event in `deposit`
-No event in `withdraw`
+##### No event in `deposit`
+##### No event in `withdraw`
 
 ### Notes:
 ####  Rare case with try_find_program_address => None
 ```
-    https://docs.rs/solana-program/latest/solana_program/pubkey/struct.Pubkey.html#method.try_find_program_address
+    ref: https://docs.rs/solana-program/latest/solana_program/pubkey/struct.Pubkey.html#method.try_find_program_address
     let position_pda = Pubkey::try_find_program_address(&[b"position", position_mint.as_ref()], &ORCA);
     position_pda is None?
     let position_pda_pubkey = position_pda.map(|(pubkey, _)| pubkey);
