@@ -119,7 +119,6 @@ Passed. Example: https://github.com/coral-xyz/sealevel-attacks/blob/master/progr
 7. Arithmetic overflow/underflows: If an arithmetic operation results in a higher or lower value, the value will wrap around with two’s complement. <br>
 Failed. Pay attention.
 ```
-Most likely low level issue.
 https://stackoverflow.com/questions/52646755/checking-for-integer-overflow-in-rust
 https://doc.rust-lang.org/std/primitive.u32.html#method.checked_add
 ```
