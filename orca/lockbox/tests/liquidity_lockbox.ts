@@ -290,6 +290,40 @@ async function main() {
 //    accountInfo = await provider.connection.getAccountInfo(pdaPositionAccount.address);
 //    console.log(accountInfo);
 
+    // Try to pass another user ATA with a mint that is different from the position mint
+    try {
+        signature = await program.methods.deposit()
+          .accounts(
+              {
+                lockbox: pdaProgram,
+                positionTokenAccount: tokenOwnerAccountA.address,
+                pdaPositionAccount: pdaPositionAccount.address,
+                bridgedTokenAccount: bridgedTokenAccount.address,
+                bridgedTokenMint: bridgedTokenMint,
+                position: position.publicKey,
+              }
+          )
+          .signers([userWallet])
+          .rpc();
+    } catch (error) {}
+
+    // Try to pass user position ATA instead of the PDA position ATA
+    try {
+        signature = await program.methods.deposit()
+          .accounts(
+              {
+                lockbox: pdaProgram,
+                positionTokenAccount: positionTokenAccount,
+                pdaPositionAccount: positionTokenAccount,
+                bridgedTokenAccount: bridgedTokenAccount.address,
+                bridgedTokenMint: bridgedTokenMint,
+                position: position.publicKey
+              }
+          )
+          .signers([userWallet])
+          .rpc();
+    } catch (error) {}
+
     // Execute the correct deposit tx
     try {
         signature = await program.methods.deposit()
@@ -373,6 +407,14 @@ async function main() {
     // ############################## WITHDRAW ##############################
     console.log("\nSending bridged tokens back to the program in exchange of the liquidity split in both tokens");
 
+    const bigBalance = new anchor.BN("4000000000");
+    // Try to get amounts and positions for a bigger provided liquidity amount than the total liquidity
+    try {
+        await program.methods.getLiquidityAmountsAndPositions(bigBalance)
+          .accounts({lockbox: pdaProgram})
+          .view();
+    } catch (error) {}
+
     // Transfer bridged tokens from the user to the program, decrease the position and send tokens back to the user
     const tBalalnce = data.liquidity;//new anchor.BN("20000000");
     // Get the data for tBalance
@@ -382,6 +424,32 @@ async function main() {
     // Check the addresses
     expect(position.publicKey).toEqual(result.positionAccounts[0]);
     expect(pdaPositionAccount.address).toEqual(result.positionPdaAta[0]);
+
+    // Try to execute the withdraw with the incorrect position address
+    try {
+        signature = await program.methods.withdraw(tBalalnce)
+          .accounts(
+              {
+                lockbox: pdaProgram,
+                whirlpoolProgram: orca,
+                whirlpool: whirlpool,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                position: bridgedTokenAccount.address,
+                positionMint: positionMint,
+                bridgedTokenAccount: bridgedTokenAccount.address,
+                bridgedTokenMint: bridgedTokenMint,
+                pdaPositionAccount: pdaPositionAccount.address,
+                tokenOwnerAccountA: tokenOwnerAccountA.address,
+                tokenOwnerAccountB: tokenOwnerAccountB.address,
+                tokenVaultA: tokenVaultA,
+                tokenVaultB: tokenVaultB,
+                tickArrayLower: tickArrayLower,
+                tickArrayUpper: tickArrayUpper
+              }
+          )
+          .signers([userWallet])
+          .rpc();
+    } catch (error) {}
 
     // Execute the correct withdraw tx
     console.log("Amount of bridged tokens to withdraw:", tBalalnce.toString());
