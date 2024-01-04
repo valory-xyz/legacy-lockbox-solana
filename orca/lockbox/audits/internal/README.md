@@ -6,7 +6,6 @@ commit: `ae2a7c326124f63c0601a18450972cef43b5ee9f` or `v0.1.0-pre-internal-audit
 ## Objectives
 The audit focused on contracts in folder `orca/lockbox`.
 
-
 ### Flatten version
 N/A
 
@@ -32,8 +31,8 @@ rustc 1.62.0 (a8314ef7d 2022-06-27)
 ```
 
 
-### Security issues.
-#### Problems found instrumentally
+## Security issues.
+### Problems found instrumentally
 Several checks are obtained automatically. They are commented. Some issues found need to be fixed. <br>
 Warning: Due to the rust specific, you need to upgrade evn to use these tools and do a downgrade before `anchor build` 
 ```
@@ -88,20 +87,28 @@ All automatic warnings are listed in the following file, concerns of which we ad
 Notes: <br>
 https://rustsec.org/advisories/RUSTSEC-2022-0093 - out of scope
 
-#### Problems found by manual analysis 04.01.23
+Pay attention: <br>
+Tools for fuzzing: <br>
+https://ackeeblockchain.com/blog/introducing-trdelnik-fuzz-testing-framework-for-solana-and-anchor/
 
-List of attack vectors (based on https://www.sec3.dev/blog/how-to-audit-solana-smart-contracts-part-1-a-systematic-approach):
+
+### Problems found by manual analysis 04.01.23
+
+List of attack vectors <br>
+https://www.sec3.dev/blog/how-to-audit-solana-smart-contracts-part-1-a-systematic-approach <br>
+https://medium.com/@zokyo.io/what-hackers-look-for-in-a-solana-smart-contract-17ec02b69fb6 <br>
 1. Missing signer checks (e.g., by checking AccountInfo::is_signer )
 N/A
 
 2. Missing ownership checks (e.g., by checking  AccountInfo::owner)
 Example: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/1-account-data-matching/recommended/src/lib.rs
+In progress.
 
 3. Missing rent exemption checks
 ?
 
 4. Signed invocation of unverified programs
-N/A
+To discussion.
 
 5. Solana account confusions: the program fails to ensure that the account data has the type it expects to have.
 In progress.
@@ -110,22 +117,33 @@ In progress.
 Passed. Example: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/4-initialization/recommended/src/lib.rs
 
 7. Arithmetic overflow/underflows: If an arithmetic operation results in a higher or lower value, the value will wrap around with two’s complement.
+Fail. Pay attention.
 ```
-Most likely we don’t have such cases, but pay attention. 
+Most likely low level issue.
 https://stackoverflow.com/questions/52646755/checking-for-integer-overflow-in-rust
 https://doc.rust-lang.org/std/primitive.u32.html#method.checked_add
 ```
 8. Numerical precision errors: numeric calculations on floating point can cause precision errors and those errors can accumulate.
 N/A
 9. Loss of precision in calculation: numeric calculations on integer types such as division can loss precision.
+N/A
 10. Incorrect calculation: for example, incorrect numerical computes due to copy/paste errors
+Passed.
 11. Casting truncation
+N/A
 12. Exponential complexity in calculation
+Passed.
 13. Missing freeze authority checks
+? In progress
 14. Insufficient SPL-Token account verification
-15. Over/under payment of loans
+? In progress
 
-### To discussion 
+#### General notes not specific to Solana/Rust. Critical
+No event in `deposit`
+No event in `withdraw`
+
+### Notes:
+####  Rare case with try_find_program_address => None
 ```
     https://docs.rs/solana-program/latest/solana_program/pubkey/struct.Pubkey.html#method.try_find_program_address
     let position_pda = Pubkey::try_find_program_address(&[b"position", position_mint.as_ref()], &ORCA);
@@ -133,3 +151,17 @@ N/A
     let position_pda_pubkey = position_pda.map(|(pubkey, _)| pubkey);
 
 ```
+
+#### Documentation standard in Rust
+Discussion with examples: <br>
+https://community.starknet.io/t/revisiting-the-comment-standard-natspec-or-rust/98009/6 <br>
+https://doc.rust-lang.org/rust-by-example/meta/doc.html <br>
+
+#### Negative tests. 
+1. re-initialize await program.methods.initialize()
+2. program.methods.deposit() with wrong/fake accounts
+3. program.methods.withdraw()  with wrong/fake accounts
+
+#### Fixed and removed all TODO
+
+#### Clean tests (delete commented/unused code)
