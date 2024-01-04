@@ -28,13 +28,13 @@ async function main() {
   const program = new Program(idl as anchor.Idl, PROGRAM_ID, anchor.getProvider()) as Program<LiquidityLockbox>;
 
   const orca = new anchor.web3.PublicKey("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");
-  const whirlpool = new anchor.web3.PublicKey("7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm");
+  const whirlpool = new anchor.web3.PublicKey("5dMKUYJDsjZkAD3wiV3ViQkuq9pSmWQ5eAzcQLtDnUT3");
   const sol = new anchor.web3.PublicKey("So11111111111111111111111111111111111111112");
-  const usdc = new anchor.web3.PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-  const tokenVaultA = new anchor.web3.PublicKey("9RfZwn2Prux6QesG1Noo4HzMEBv3rPndJ2bN2Wwd6a7p");
-  const tokenVaultB = new anchor.web3.PublicKey("BVNo8ftg2LkkssnWT4ZWdtoFaevnfD6ExYeramwM27pe");
-  const tickArrayLower = new anchor.web3.PublicKey("DJBLVHo3uTQBYpSHbVdDq8LoRsSiYV9EVhDUguXszvCi");
-  const tickArrayUpper = new anchor.web3.PublicKey("ZPyVkTuj9TBr1ER4Fnubyz1w7bm5LsXctLiZb8Fs2Do");
+  const olas = new anchor.web3.PublicKey("Ez3nzG9ofodYCvEmw73XhQ87LWNYVRM2s7diB5tBZPyM");
+  const tokenVaultA = new anchor.web3.PublicKey("CLA8hU8SkdCZ9cJVLMfZQfcgAsywZ9txBJ6qrRAqthLx");
+  const tokenVaultB = new anchor.web3.PublicKey("6E8pzDK8uwpENc49kp5xo5EGydYjtamPSmUKXxum4ybb");
+  const tickArrayLower = new anchor.web3.PublicKey("3oJAqTKTCdGvLS9zpoBquWvMjwthu9Np67Qp4W8AT843");
+  const tickArrayUpper = new anchor.web3.PublicKey("J3eMJUQWLmSsG5VnXVFHCGwakpKmzi4jkNvi3vbCZQ3o");
 
     // User wallet is the provider payer
     const userWallet = provider.wallet["payer"];
@@ -46,15 +46,15 @@ async function main() {
 
       // Get the current price of the pool
       const sqrt_price_x64 = whirlpoolClient.getData().sqrtPrice;
-      const price = PriceMath.sqrtPriceX64ToPrice(sqrt_price_x64, 9, 6);
+      const price = PriceMath.sqrtPriceX64ToPrice(sqrt_price_x64, 9, 8);
       console.log("price:", price.toFixed(6));
 
       // Set price range, amount of tokens to deposit, and acceptable slippage
-      const usdc_amount = DecimalUtil.toBN(new Decimal("10" /* usdc */), 6);
+      const olas_amount = DecimalUtil.toBN(new Decimal("10" /* olas */), 8);
       const slippage = Percentage.fromFraction(10, 1000); // 1%
       // Full range price
-      const lower_tick_index = -443632;
-      const upper_tick_index = 443632;
+      const lower_tick_index = -444928;
+      const upper_tick_index = 439296;
 
       // Adjust price range (not all prices can be set, only a limited number of prices are available for range specification)
       // (prices corresponding to InitializableTickIndex are available)
@@ -79,8 +79,8 @@ async function main() {
         tickLowerIndex: lower_tick_index,
         tickUpperIndex: upper_tick_index,
         // Input token and amount
-        inputTokenMint: usdc,
-        inputTokenAmount: usdc_amount,
+        inputTokenMint: olas,
+        inputTokenAmount: olas_amount,
         // Acceptable slippage
         slippageTolerance: slippage,
       });
