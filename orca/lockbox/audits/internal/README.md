@@ -165,3 +165,6 @@ https://doc.rust-lang.org/rust-by-example/meta/doc.html <br>
 #### Fixed and removed all TODO
 
 #### Clean tests (delete commented/unused code)
+
+#### Cleaning repo
+Is it possible to make a project containing only `lockbox`
