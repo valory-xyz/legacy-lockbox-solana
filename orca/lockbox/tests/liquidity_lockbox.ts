@@ -9,7 +9,7 @@ import {
 import {
   WhirlpoolContext, buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID,
   PDAUtil, PoolUtil, PriceMath, increaseLiquidityQuoteByInputTokenWithParams,
-  decreaseLiquidityQuoteByLiquidityWithParams
+  decreaseLiquidityQuoteByLiquidityWithParams, TickUtil
 } from "@orca-so/whirlpools-sdk";
 import { DecimalUtil, Percentage } from "@orca-so/common-sdk";
 import Decimal from "decimal.js";
@@ -47,14 +47,16 @@ async function main() {
       // Get the current price of the pool
       const sqrt_price_x64 = whirlpoolClient.getData().sqrtPrice;
       const price = PriceMath.sqrtPriceX64ToPrice(sqrt_price_x64, 9, 8);
-      console.log("price:", price.toFixed(6));
+      console.log("price:", price.toFixed(8));
 
       // Set price range, amount of tokens to deposit, and acceptable slippage
       const olas_amount = DecimalUtil.toBN(new Decimal("10" /* olas */), 8);
       const slippage = Percentage.fromFraction(10, 1000); // 1%
       // Full range price
-      const lower_tick_index = -444928;
-      const upper_tick_index = 439296;
+      const tickSpacing = 64;
+      const [lower_tick_index, upper_tick_index] = TickUtil.getFullRangeTickIndex(tickSpacing);
+      //const lower_tick_index = -443584;
+      //const upper_tick_index = 443584;
 
       // Adjust price range (not all prices can be set, only a limited number of prices are available for range specification)
       // (prices corresponding to InitializableTickIndex are available)
@@ -119,7 +121,7 @@ async function main() {
     // Deploy the LiquidityLockbox program
     try {
         signature = await program.methods
-          .initialize(whirlpool, bridgedTokenMint)
+          .initialize(bridgedTokenMint)
           .accounts({ lockbox: pdaProgram })
           .rpc();
     } catch (error) {

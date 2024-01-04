@@ -2,9 +2,6 @@ use anchor_lang::prelude::*;
 
 #[account]
 pub struct LiquidityLockbox {
-  // TODO: pool
-  // Whirlpool (LP) pool address
-  pub whirlpool: Pubkey,
   // Lockbox bump
   pub lockbox_bump: [u8; 1],
   // Bridged token mint address
@@ -30,10 +27,8 @@ impl LiquidityLockbox {
   pub fn initialize(
     &mut self,
     bump: u8,
-    whirlpool: Pubkey,
     bridged_token_mint: Pubkey
   ) -> Result<()> {
-    self.whirlpool = whirlpool;
     self.bridged_token_mint = bridged_token_mint;
     self.total_liquidity = 0;
     self.lockbox_bump = [bump];
