@@ -217,66 +217,45 @@ pub mod liquidity_lockbox {
       &[]
     )?;
 
-    // Close user account if it has zero amount of bridged tokens
-//     let balance = ctx.accounts.bridged_token_account.amount;
-//     if balance == 0 {
-      invoke_signed(
-        &close_account(
-            ctx.accounts.token_program.key,
-            ctx.accounts.bridged_token_account.to_account_info().key,
-            ctx.accounts.signer.to_account_info().key,
-            ctx.accounts.bridged_token_mint.to_account_info().key,
-            &[],
-        )?,
-        &[
-            ctx.accounts.token_program.to_account_info(),
-            ctx.accounts.bridged_token_account.to_account_info(),
-            ctx.accounts.signer.to_account_info(),
-            ctx.accounts.bridged_token_mint.to_account_info(),
-        ],
-        &[],
-      )?;
-//     }
-
     // Get program signer seeds
     let signer_seeds = &[&ctx.accounts.lockbox.seeds()[..]];
 
-      // Update fees for the position
-      let cpi_program_update_fees = ctx.accounts.whirlpool_program.to_account_info();
-      let cpi_accounts_update_fees = UpdateFeesAndRewards {
-        whirlpool: ctx.accounts.whirlpool.to_account_info(),
-        position: ctx.accounts.position.to_account_info(),
-        tick_array_lower: ctx.accounts.tick_array_lower.to_account_info(),
-        tick_array_upper: ctx.accounts.tick_array_upper.to_account_info()
-      };
+    // Update fees for the position
+    let cpi_program_update_fees = ctx.accounts.whirlpool_program.to_account_info();
+    let cpi_accounts_update_fees = UpdateFeesAndRewards {
+      whirlpool: ctx.accounts.whirlpool.to_account_info(),
+      position: ctx.accounts.position.to_account_info(),
+      tick_array_lower: ctx.accounts.tick_array_lower.to_account_info(),
+      tick_array_upper: ctx.accounts.tick_array_upper.to_account_info()
+    };
 
-      let cpi_ctx_update_fees = CpiContext::new_with_signer(
-        cpi_program_update_fees,
-        cpi_accounts_update_fees,
-        signer_seeds
-      );
-      whirlpool::cpi::update_fees_and_rewards(cpi_ctx_update_fees)?;
+    let cpi_ctx_update_fees = CpiContext::new_with_signer(
+      cpi_program_update_fees,
+      cpi_accounts_update_fees,
+      signer_seeds
+    );
+    whirlpool::cpi::update_fees_and_rewards(cpi_ctx_update_fees)?;
 
-      // Collect fees from the position
-      let cpi_program_collect_fees = ctx.accounts.whirlpool_program.to_account_info();
-      let cpi_accounts_collect_fees = CollectFees {
-        whirlpool: ctx.accounts.whirlpool.to_account_info(),
-        position_authority: ctx.accounts.lockbox.to_account_info(),
-        position: ctx.accounts.position.to_account_info(),
-        position_token_account: ctx.accounts.pda_position_account.to_account_info(),
-        token_owner_account_a: ctx.accounts.token_owner_account_a.to_account_info(),
-        token_owner_account_b: ctx.accounts.token_owner_account_b.to_account_info(),
-        token_vault_a: ctx.accounts.token_vault_a.to_account_info(),
-        token_vault_b: ctx.accounts.token_vault_b.to_account_info(),
-        token_program: ctx.accounts.token_program.to_account_info()
-      };
+    // Collect fees from the position
+    let cpi_program_collect_fees = ctx.accounts.whirlpool_program.to_account_info();
+    let cpi_accounts_collect_fees = CollectFees {
+      whirlpool: ctx.accounts.whirlpool.to_account_info(),
+      position_authority: ctx.accounts.lockbox.to_account_info(),
+      position: ctx.accounts.position.to_account_info(),
+      position_token_account: ctx.accounts.pda_position_account.to_account_info(),
+      token_owner_account_a: ctx.accounts.token_owner_account_a.to_account_info(),
+      token_owner_account_b: ctx.accounts.token_owner_account_b.to_account_info(),
+      token_vault_a: ctx.accounts.token_vault_a.to_account_info(),
+      token_vault_b: ctx.accounts.token_vault_b.to_account_info(),
+      token_program: ctx.accounts.token_program.to_account_info()
+    };
 
-      let cpi_ctx_collect_fees = CpiContext::new_with_signer(
-        cpi_program_collect_fees,
-        cpi_accounts_collect_fees,
-        signer_seeds
-      );
-      whirlpool::cpi::collect_fees(cpi_ctx_collect_fees)?;
+    let cpi_ctx_collect_fees = CpiContext::new_with_signer(
+      cpi_program_collect_fees,
+      cpi_accounts_collect_fees,
+      signer_seeds
+    );
+    whirlpool::cpi::collect_fees(cpi_ctx_collect_fees)?;
 
     // CPI to decrease liquidity
     // TODO: find out how to keep the same cpi_program variable for all of the calls
@@ -519,25 +498,24 @@ pub struct LiquidityLockboxState<'info> {
 pub enum ErrorCode {
   #[msg("Liquidity value overflow")]
   LiquidityOverflow,
+  #[msg("Wrong whirlpool address")]
   WrongWhirlpool,
+  #[msg("Liquidity is zero")]
   LiquidityZero,
+  #[msg("Total liquidity is zero")]
   TotalLiquidityZero,
+  #[msg("Requested amount exceeds a position liquidity")]
   AmountExceedsPositionLiquidity,
+  #[msg("Requested amount exceeds total liquidity")]
   AmountExceedsTotalLiquidity,
+  #[msg("Tick out of range")]
   OutOfRange,
+  #[msg("Wrong account owner")]
   WrongOwner,
+  #[msg("Provided wrong position PDA")]
   WrongPositionPDA,
+  #[msg("Provided wrong position ATA")]
   WrongPositionAccount,
+  #[msg("Provided wrong PDA position ATA")]
   WrongPDAPositionAccount
-}
-
-
-// to display println! : cargo test -- --nocapture
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn test_test() {
-  }
 }
