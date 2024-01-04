@@ -1,0 +1,72 @@
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /home/andrey/valory/solana-sandbox/orca/lockbox/programs/liquidity_lockbox/Cargo.toml
+workspace: /home/andrey/valory/solana-sandbox/orca/lockbox/Cargo.toml
+warning: the `Err`-variant returned from this function is very large
+  --> programs/liquidity_lockbox/src/state.rs:35:8
+   |
+35 |   ) -> Result<()> {
+   |        ^^^^^^^^^^ the `Err`-variant is at least 160 bytes
+   |
+   = help: try reducing the size of `anchor_lang::error::Error`, for example by boxing large elements or replacing it with `Box<anchor_lang::error::Error>`
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+   = note: `#[warn(clippy::result_large_err)]` on by default
+
+warning: the `Err`-variant returned from this function is very large
+  --> programs/liquidity_lockbox/src/lib.rs:40:8
+   |
+40 |   ) -> Result<()> {
+   |        ^^^^^^^^^^ the `Err`-variant is at least 160 bytes
+   |
+   = help: try reducing the size of `anchor_lang::error::Error`, for example by boxing large elements or replacing it with `Box<anchor_lang::error::Error>`
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+warning: question mark operator is useless here
+  --> programs/liquidity_lockbox/src/lib.rs:47:5
+   |
+47 | /     Ok(lockbox.initialize(
+48 | |       bump,
+49 | |       whirlpool,
+50 | |       bridged_token_mint
+51 | |     )?)
+   | |_______^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#needless_question_mark
+   = note: `#[warn(clippy::needless_question_mark)]` on by default
+help: try removing question mark and `Ok()`
+   |
+47 ~     lockbox.initialize(
+48 +       bump,
+49 +       whirlpool,
+50 +       bridged_token_mint
+51 +     )
+   |
+
+warning: the `Err`-variant returned from this function is very large
+  --> programs/liquidity_lockbox/src/lib.rs:54:64
+   |
+54 |   pub fn deposit(ctx: Context<DepositPositionForLiquidity>) -> Result<()> {
+   |                                                                ^^^^^^^^^^ the `Err`-variant is at least 160 bytes
+   |
+   = help: try reducing the size of `anchor_lang::error::Error`, for example by boxing large elements or replacing it with `Box<anchor_lang::error::Error>`
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+warning: the `Err`-variant returned from this function is very large
+   --> programs/liquidity_lockbox/src/lib.rs:154:8
+    |
+154 |   ) -> Result<()> {
+    |        ^^^^^^^^^^ the `Err`-variant is at least 160 bytes
+    |
+    = help: try reducing the size of `anchor_lang::error::Error`, for example by boxing large elements or replacing it with `Box<anchor_lang::error::Error>`
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+warning: the `Err`-variant returned from this function is very large
+   --> programs/liquidity_lockbox/src/lib.rs:318:8
+    |
+318 |     -> Result<AmountsAndPositions>
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 160 bytes
+    |
+    = help: try reducing the size of `anchor_lang::error::Error`, for example by boxing large elements or replacing it with `Box<anchor_lang::error::Error>`
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+warning: `liquidity_lockbox` (lib) generated 6 warnings (run `cargo clippy --fix --lib -p liquidity_lockbox` to apply 1 suggestion)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.12s

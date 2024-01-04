@@ -81,7 +81,7 @@ pub mod liquidity_lockbox {
     let position_pda = Pubkey::try_find_program_address(&[b"position", position_mint.as_ref()], &ORCA);
     let position_pda_pubkey = position_pda.map(|(pubkey, _)| pubkey);
     if position_pda_pubkey.unwrap() != ctx.accounts.position.key() {
-      return Err(ErrorCode::WrongPositionPDA.into());
+       return Err(ErrorCode::WrongPositionPDA.into());
     }
 
     let position_liquidity = liquidity as u64;
