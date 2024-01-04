@@ -34,7 +34,7 @@ pub mod liquidity_lockbox {
   /// Initializes a Lockbox account that stores state data.
   ///
   /// ### Parameters
-  /// - `bridged_token_mint` - Bridged token mint for tokens issued in return for the position liquidity.
+  /// - `bridged_token_mint` - Bridged token mint for tokens issued in return for the position liquidity NFT.
   pub fn initialize(
     ctx: Context<InitializeLiquidityLockbox>,
     bridged_token_mint: Pubkey
@@ -429,9 +429,9 @@ pub struct DepositPositionForLiquidity<'info> {
   pub pda_position_account: Box<Account<'info, TokenAccount>>,
 
   #[account(mut)]
-  pub bridged_token_mint: Account<'info, Mint>,
+  pub bridged_token_mint: Box<Account<'info, Mint>>,
   #[account(mut, constraint = bridged_token_account.mint == bridged_token_mint.key())]
-  pub bridged_token_account: Account<'info, TokenAccount>,
+  pub bridged_token_account: Box<Account<'info, TokenAccount>>,
 
   #[account(mut)]
   pub lockbox: Box<Account<'info, LiquidityLockbox>>,
