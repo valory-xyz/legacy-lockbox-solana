@@ -97,45 +97,51 @@ https://ackeeblockchain.com/blog/introducing-trdelnik-fuzz-testing-framework-for
 List of attack vectors <br>
 https://www.sec3.dev/blog/how-to-audit-solana-smart-contracts-part-1-a-systematic-approach <br>
 https://medium.com/@zokyo.io/what-hackers-look-for-in-a-solana-smart-contract-17ec02b69fb6 <br>
-1. Missing signer checks (e.g., by checking AccountInfo::is_signer )
+1. Missing signer checks (e.g., by checking AccountInfo::is_signer ) <br>
 N/A
 
-2. Missing ownership checks (e.g., by checking  AccountInfo::owner)
+2. Missing ownership checks (e.g., by checking  AccountInfo::owner) <br>
 Example: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/1-account-data-matching/recommended/src/lib.rs
 In progress.
 
-3. Missing rent exemption checks
-?
+3. Missing rent exemption checks <br>
+? In progress
 
-4. Signed invocation of unverified programs
-To discussion.
+4. Signed invocation of unverified programs <br>
+In progress. To discussion.
 
-5. Solana account confusions: the program fails to ensure that the account data has the type it expects to have.
+5. Solana account confusions: the program fails to ensure that the account data has the type it expects to have. <br>
 In progress.
 
-6. Re-initiation with cross-instance confusion
+6. Re-initiation with cross-instance confusion <br>
 Passed. Example: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/4-initialization/recommended/src/lib.rs
 
-7. Arithmetic overflow/underflows: If an arithmetic operation results in a higher or lower value, the value will wrap around with two’s complement.
-Fail. Pay attention.
+7. Arithmetic overflow/underflows: If an arithmetic operation results in a higher or lower value, the value will wrap around with two’s complement. <br>
+Failed. Pay attention.
 ```
 Most likely low level issue.
 https://stackoverflow.com/questions/52646755/checking-for-integer-overflow-in-rust
 https://doc.rust-lang.org/std/primitive.u32.html#method.checked_add
 ```
-8. Numerical precision errors: numeric calculations on floating point can cause precision errors and those errors can accumulate.
+8. Numerical precision errors: numeric calculations on floating point can cause precision errors and those errors can accumulate. <br>
 N/A
-9. Loss of precision in calculation: numeric calculations on integer types such as division can loss precision.
+
+9. Loss of precision in calculation: numeric calculations on integer types such as division can loss precision. <br>
 N/A
-10. Incorrect calculation: for example, incorrect numerical computes due to copy/paste errors
+
+10. Incorrect calculation: for example, incorrect numerical computes due to copy/paste errors <br>
 Passed.
-11. Casting truncation
+
+11. Casting truncation <br>
 N/A
-12. Exponential complexity in calculation
+
+12. Exponential complexity in calculation <br>
 Passed.
-13. Missing freeze authority checks
+
+13. Missing freeze authority checks <br>
 ? In progress
-14. Insufficient SPL-Token account verification
+
+14. Insufficient SPL-Token account verification <br>
 ? In progress
 
 #### General notes not specific to Solana/Rust. Critical
