@@ -155,6 +155,10 @@ pub mod liquidity_lockbox {
     // Get the lockbox state
     let lockbox = &ctx.accounts.lockbox;
 
+    if lockbox.total_liquidity == 0 {
+      return Err(ErrorCode::TotalLiquidityZero.into());
+    }
+
     let idx = lockbox.position_liquidity.len() - 1;
     let position_liquidity: u64 = lockbox.position_liquidity[idx];
     // TODO: check as this must never happen
@@ -479,6 +483,7 @@ pub struct LiquidityLockboxState<'info> {
 pub enum ErrorCode {
   Overflow,
   LiquidityZero,
+  TotalLiquidityZero,
   AmountExceedsPositionLiquidity,
   AmountExceedsTotalLiquidity,
   OutOfRange,
