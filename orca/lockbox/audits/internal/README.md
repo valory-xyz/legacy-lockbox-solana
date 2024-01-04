@@ -1,4 +1,4 @@
-# Internal audit of autonolas-tokenomics
+# Internal audit of solana-sandbox
 The review has been performed based on the contract code in the following repository:<br>
 `https://github.com/valory-xyz/solana-sandbox` <br>
 commit: `ae2a7c326124f63c0601a18450972cef43b5ee9f` or `v0.1.0-pre-internal-audit`<br> 
