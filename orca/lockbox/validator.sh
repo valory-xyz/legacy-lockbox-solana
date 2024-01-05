@@ -1,6 +1,6 @@
 #!/bin/bash
 solana-test-validator --bpf-program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc artifacts/whirlpool.so \
---bpf-program 29i4A6jkwKbWBquwpxCYwu67Dc7wqgBXARgQcA1mhT34 target/deploy/cpi_whirlpool.so \
+--bpf-program 7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ target/deploy/liquidity_lockbox.so \
 --account EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v fork_whirlpool/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v.json \
 --account HxAdgWUeJLs35qn3eLwz5ZuMMvZe5A9Z7BXgfsEu5ygp fork_whirlpool/HxAdgWUeJLs35qn3eLwz5ZuMMvZe5A9Z7BXgfsEu5ygp.json \
 --account 7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm fork_whirlpool/7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm.json \

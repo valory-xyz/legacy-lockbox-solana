@@ -1,7 +1,7 @@
 [features]
 seeds = true
 [programs.localnet]
-cpi_whirlpool = "29i4A6jkwKbWBquwpxCYwu67Dc7wqgBXARgQcA1mhT34"
+liquidity_lockbox = "7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ"
 
 [registry]
 url = "https://anchor.projectserum.com"
