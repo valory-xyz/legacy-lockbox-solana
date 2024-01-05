@@ -108,6 +108,7 @@ In progress.
 ? In progress
 - approach (lockbox.position_accounts.push) limited 10k/(2 * sizeof(pubkey) + sizeof(u64)) ~ 138 NFT. So, after it the account will be filled
 we need some other solution.
+Notes: PDA account can't be > 10k. ref: https://stackoverflow.com/questions/70150946/systemprogramcreateaccount-data-size-limited-to-10240-in-inner-instructions
 
 
 4. Signed invocation of unverified programs <br>
