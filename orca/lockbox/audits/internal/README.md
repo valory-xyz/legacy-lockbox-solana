@@ -122,23 +122,26 @@ token_vault_a.owner ?
 token_vault_b.owner ?
 tick_array_lower.owner ?
 tick_array_upper.onwer ?
+To discussion.
 
 3. Missing rent exemption checks <br>
 ? In progress
 - approach (lockbox.position_accounts.push) limited 10k/(2 * sizeof(pubkey) + sizeof(u64)) ~ 138 NFT. So, after it the account will be filled
 we need some other solution.
 Notes: PDA account can't be > 10k. ref: https://stackoverflow.com/questions/70150946/systemprogramcreateaccount-data-size-limited-to-10240-in-inner-instructions
-
+To discussion.
+Status at the time of audit: will be corrected in the next version.
 
 4. Signed invocation of unverified programs <br>
 token_program is real token_program ?
 whirlpool_program is real whirlpool_program ?
+To discussion.
 
 
 5. Solana account confusions: the program fails to ensure that the account data has the type it expects to have. <br>
 lockbox.bridged_token_mint vs account.bridged_token_mint ? // Check that the bridged token mint account is correct
 pub whirlpool: Box<Account<'info, Whirlpool>> is whirlpool ?
-
+To discussion.
 
 6. Re-initiation with cross-instance confusion <br>
 Passed. Example: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/4-initialization/recommended/src/lib.rs
@@ -169,7 +172,7 @@ To discussion.
 
 14. Insufficient SPL-Token account verification <br>
 bridged_token is SPL-token ?
-
+To discussion.
 
 #### General notes not specific to Solana/Rust. Critical
 ##### No event in `deposit`
