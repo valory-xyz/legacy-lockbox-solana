@@ -92,7 +92,7 @@ Tools for fuzzing: <br>
 https://ackeeblockchain.com/blog/introducing-trdelnik-fuzz-testing-framework-for-solana-and-anchor/
 
 
-### Problems found by manual analysis 04.01.23
+### Problems found by manual analysis 05.01.23
 
 List of attack vectors <br>
 https://www.sec3.dev/blog/how-to-audit-solana-smart-contracts-part-1-a-systematic-approach <br>
@@ -102,7 +102,26 @@ N/A
 
 2. Missing ownership checks (e.g., by checking  AccountInfo::owner) <br>
 Example: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/1-account-data-matching/recommended/src/lib.rs <br>
-In progress.
+Please, double checking ownership
+In deposit:
+pda_position_account.owner == lockbox.key() [x]
+position_token_account.owner ?
+bridged_token_mint.owner ?
+bridged_token_account.owner ?
+lockbox.owner ?
+
+In withdraw:
+bridged_token_mint.owner ?
+bridged_token_account.owner ?
+position.owner ?
+pda_position_account.owner ?
+position_mint.owner ?
+token_owner_account_a.owner ?
+token_owner_account_b.owner ?
+token_vault_a.owner ?
+token_vault_b.owner ?
+tick_array_lower.owner ?
+tick_array_upper.onwer ?
 
 3. Missing rent exemption checks <br>
 ? In progress
@@ -112,10 +131,14 @@ Notes: PDA account can't be > 10k. ref: https://stackoverflow.com/questions/7015
 
 
 4. Signed invocation of unverified programs <br>
-In progress. To discussion.
+token_program is real token_program ?
+whirlpool_program is real whirlpool_program ?
+
 
 5. Solana account confusions: the program fails to ensure that the account data has the type it expects to have. <br>
-In progress.
+lockbox.bridged_token_mint vs account.bridged_token_mint ? // Check that the bridged token mint account is correct
+pub whirlpool: Box<Account<'info, Whirlpool>> is whirlpool ?
+
 
 6. Re-initiation with cross-instance confusion <br>
 Passed. Example: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/4-initialization/recommended/src/lib.rs
@@ -142,10 +165,11 @@ N/A
 Passed.
 
 13. Missing freeze authority checks <br>
-? In progress
+To discussion.
 
 14. Insufficient SPL-Token account verification <br>
-? In progress
+bridged_token is SPL-token ?
+
 
 #### General notes not specific to Solana/Rust. Critical
 ##### No event in `deposit`
@@ -158,6 +182,8 @@ Passed.
     let position_pda = Pubkey::try_find_program_address(&[b"position", position_mint.as_ref()], &ORCA);
     position_pda is None?
     let position_pda_pubkey = position_pda.map(|(pubkey, _)| pubkey);
+
+    maybe https://docs.rs/solana-program/latest/solana_program/pubkey/struct.Pubkey.html#method.find_program_address
 
 ```
 
