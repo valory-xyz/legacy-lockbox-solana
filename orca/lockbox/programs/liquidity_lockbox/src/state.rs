@@ -8,11 +8,13 @@ pub struct LiquidityLockbox {
   pub bridged_token_mint: Pubkey,
   // Total liquidity in a lockbox
   pub total_liquidity: u64,
-  // Total number of positions
+  // Total number of lockbox positions
   pub num_positions: u32
 }
 
 impl LiquidityLockbox {
+  pub const LEN: usize = 8 + 1 + 32 + 8 + 4;
+
   pub fn seeds(&self) -> [&[u8]; 2] {
     [
       &b"liquidity_lockbox"[..],
@@ -49,6 +51,8 @@ pub struct LockboxPosition {
 }
 
 impl LockboxPosition {
+  pub const LEN: usize = 8 + 4 + 1 + 32 + 32 + 8;
+
   pub fn seeds(&self) -> [&[u8]; 3] {
     [
       &b"lockbox_position"[..],

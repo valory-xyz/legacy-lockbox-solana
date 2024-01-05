@@ -287,43 +287,8 @@ async function main() {
 //    accountInfo = await provider.connection.getAccountInfo(pdaPositionAccount);
 //    console.log(accountInfo);
 
-//    // Try to pass another user ATA with a mint that is different from the position mint
-//    try {
-//        signature = await program.methods.deposit()
-//          .accounts(
-//              {
-//                lockbox: pdaProgram,
-//                positionTokenAccount: tokenOwnerAccountA.address,
-//                pdaPositionAccount: pdaPositionAccount,
-//                bridgedTokenAccount: bridgedTokenAccount.address,
-//                bridgedTokenMint: bridgedTokenMint,
-//                position: position.publicKey,
-//              }
-//          )
-//          .signers([userWallet])
-//          .rpc();
-//    } catch (error) {}
-//
-//    // Try to pass user position ATA instead of the PDA position ATA
-//    try {
-//        signature = await program.methods.deposit()
-//          .accounts(
-//              {
-//                lockbox: pdaProgram,
-//                positionTokenAccount: positionTokenAccount,
-//                pdaPositionAccount: positionTokenAccount,
-//                bridgedTokenAccount: bridgedTokenAccount.address,
-//                bridgedTokenMint: bridgedTokenMint,
-//                position: position.publicKey
-//              }
-//          )
-//          .signers([userWallet])
-//          .rpc();
-//    } catch (error) {}
-
     // Get the state data
     let stateData = await program.account.liquidityLockbox.fetch(pdaProgram);
-
     const numPosition = stateData.numPositions;
 
     // Find a PDA account for the lockbox position
@@ -333,6 +298,42 @@ async function main() {
     const [pdaLockboxPosition, positionBump] = await anchor.web3.PublicKey.findProgramAddress([bytesStr, bytesNum], program.programId);
     const positionBumpBytes = Buffer.from(new Uint8Array([positionBump]));
     console.log("PDA Lockbox Position:", pdaLockboxPosition.toBase58());
+
+    // Try to pass another user ATA with a mint that is different from the position mint
+    try {
+        signature = await program.methods.deposit(numPosition)
+          .accounts(
+              {
+                lockbox: pdaProgram,
+                positionTokenAccount: tokenOwnerAccountA.address,
+                pdaPositionAccount: pdaPositionAccount,
+                pdaLockboxPosition: pdaLockboxPosition,
+                bridgedTokenAccount: bridgedTokenAccount.address,
+                bridgedTokenMint: bridgedTokenMint,
+                position: position.publicKey,
+              }
+          )
+          .signers([userWallet])
+          .rpc();
+    } catch (error) {}
+
+    // Try to pass user position ATA instead of the PDA position ATA
+    try {
+        signature = await program.methods.deposit(numPosition)
+          .accounts(
+              {
+                lockbox: pdaProgram,
+                positionTokenAccount: positionTokenAccount,
+                pdaPositionAccount: positionTokenAccount,
+                pdaLockboxPosition: pdaLockboxPosition,
+                bridgedTokenAccount: bridgedTokenAccount.address,
+                bridgedTokenMint: bridgedTokenMint,
+                position: position.publicKey
+              }
+          )
+          .signers([userWallet])
+          .rpc();
+    } catch (error) {}
 
     //getAssociatedTokenAddressSync(positionMint, pdaProgram)
     // Execute the correct deposit tx
@@ -422,6 +423,32 @@ async function main() {
 
     const bigBalance = new anchor.BN("4000000000");
     // Try to get amounts and positions for a bigger provided liquidity amount than the total liquidity
+    // Try to execute the withdraw with the incorrect position address
+    try {
+        signature = await program.methods.withdraw(bigBalance)
+          .accounts(
+              {
+                lockbox: pdaProgram,
+                whirlpoolProgram: orca,
+                whirlpool: whirlpool,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                position: position.publicKey,
+                positionMint: positionMint,
+                pdaLockboxPosition: pdaLockboxPosition,
+                bridgedTokenAccount: bridgedTokenAccount.address,
+                bridgedTokenMint: bridgedTokenMint,
+                pdaPositionAccount: pdaPositionAccount,
+                tokenOwnerAccountA: tokenOwnerAccountA.address,
+                tokenOwnerAccountB: tokenOwnerAccountB.address,
+                tokenVaultA: tokenVaultA,
+                tokenVaultB: tokenVaultB,
+                tickArrayLower: tickArrayLower,
+                tickArrayUpper: tickArrayUpper
+              }
+          )
+          .signers([userWallet])
+          .rpc();
+    } catch (error) {}
 
     // Transfer bridged tokens from the user to the program, decrease the position and send tokens back to the user
     const tBalalnce = data.liquidity;//new anchor.BN("20000000");

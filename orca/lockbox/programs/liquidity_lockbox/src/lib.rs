@@ -48,6 +48,7 @@ pub mod liquidity_lockbox {
     // Get the anchor-derived bump
     let bump = *ctx.bumps.get("lockbox").unwrap();
 
+    // Initialize lockbox account
     Ok(lockbox.initialize(
       bump,
       bridged_token_mint
@@ -95,6 +96,7 @@ pub mod liquidity_lockbox {
     }
 
     // Check the id that has to match the number of positions in order to create a correct account
+    // The position needs to be provided as an argument since it's passed into the instruction field
     let num_positions = ctx.accounts.lockbox.num_positions;
     if num_positions != id {
       return Err(ErrorCode::WrongPositionId.into());
@@ -163,9 +165,8 @@ pub mod liquidity_lockbox {
     )?;
 
     // Increase the amount of total bridged token liquidity and the number of position accounts
-    let lockbox = &mut ctx.accounts.lockbox;
-    lockbox.total_liquidity += position_liquidity;
-    lockbox.num_positions += 1;
+    ctx.accounts.lockbox.total_liquidity += position_liquidity;
+    ctx.accounts.lockbox.num_positions += 1;
 
     Ok(())
   }
@@ -178,18 +179,18 @@ pub mod liquidity_lockbox {
     ctx: Context<WithdrawLiquidityForTokens>,
     amount: u64,
   ) -> Result<()> {
-    // Get the lockbox state
-    let lockbox = &ctx.accounts.lockbox;
-
     // Check if there is any liquidity left in the Lockbox
-    if lockbox.total_liquidity == 0 {
+    if ctx.accounts.lockbox.total_liquidity == 0 {
       return Err(ErrorCode::TotalLiquidityZero.into());
     }
 
+    // TODO: any other way to get PROGRAM_ID?
     // Get the lockbox position PDA ATA
-    let id = lockbox.num_positions - 1;
+    let id = ctx.accounts.lockbox.num_positions - 1;
     let lockbox_position = Pubkey::try_find_program_address(&[b"lockbox_position", id.to_be_bytes().as_ref()], &PROGRAM_ID);
     let lockbox_position_pubkey = lockbox_position.map(|(pubkey, _)| pubkey);
+
+    // Check that the calculated address matches the provided PDA lockbox position
     if lockbox_position_pubkey.unwrap() != ctx.accounts.pda_lockbox_position.key() {
       return Err(ErrorCode::WrongPDAPositionAccount.into());
     }
@@ -313,13 +314,15 @@ pub mod liquidity_lockbox {
         signer_seeds
       );
       whirlpool::cpi::close_position(cpi_ctx_close_position)?;
+
+      // TODO: Close the pda_lockbox_position account
     }
 
     // TODO: Check the CEI pattern if it makes sense, as it's not possible to declare the mutable before
 
     // Check the position remainder
     if remainder == 0 {
-      // Remove the last lockbox position account
+      // Decrease lockbox position counter
       ctx.accounts.lockbox.num_positions -= 1;
     } else {
       // Update position liquidity
@@ -344,7 +347,7 @@ pub struct InitializeLiquidityLockbox<'info> {
     ],
     bump,
     payer = signer,
-    space = 10240)]
+    space = LiquidityLockbox::LEN)]
   pub lockbox: Box<Account<'info, LiquidityLockbox>>,
 
   #[account(address = token::ID)]
@@ -381,7 +384,7 @@ pub struct DepositPositionForLiquidity<'info> {
       id.to_be_bytes().as_ref()
     ],
     bump,
-    space = 10000,
+    space = LockboxPosition::LEN,
     payer = position_authority)]
   pub pda_lockbox_position: Box<Account<'info, LockboxPosition>>,
 
