@@ -106,6 +106,9 @@ In progress.
 
 3. Missing rent exemption checks <br>
 ? In progress
+- approach (lockbox.position_accounts.push) limited 10k/(2 * sizeof(pubkey) + sizeof(u64)) ~ 138 NFT. So, after it the account will be filled
+we need some other solution.
+
 
 4. Signed invocation of unverified programs <br>
 In progress. To discussion.
