@@ -161,10 +161,6 @@ pub mod liquidity_lockbox {
       ctx.accounts.position.key(),
       ctx.accounts.pda_position_account.key()
     )?;
-//     pda_lockbox_position.bump = *ctx.bumps.get("pda_lockbox_position").unwrap();
-//     pda_lockbox_position.position_account = ctx.accounts.position.key();
-//     pda_lockbox_position.position_pda_ata = ctx.accounts.pda_position_account.key();
-//     pda_lockbox_position.position_liquidity = position_liquidity;
 
     // Increase the amount of total bridged token liquidity and the number of position accounts
     let lockbox = &mut ctx.accounts.lockbox;
@@ -210,12 +206,6 @@ pub mod liquidity_lockbox {
     if amount > position_liquidity {
       return Err(ErrorCode::AmountExceedsPositionLiquidity.into());
     }
-
-    // Check the position address
-//     let position_account = lockbox.position_accounts[idx];
-//     if position_account != ctx.accounts.position.key() {
-//       return Err(ErrorCode::WrongPositionAccount.into());
-//     }
 
     // Burn provided amount of bridged tokens
     invoke_signed(
