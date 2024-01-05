@@ -1,5 +1,9 @@
-# CPI Whirlpool
-Set of contracts to call various Orca Whirlpool functions via the CPI.
+# Liquidity Lockbox
+
+## Introduction
+This repository contain the liquidity lockbox set of contracts on Solana. The description of the concept can be found here:
+[Liquidity lockbox concept](https://github.com/valory-xyz/solana-sandbox/blob/main/orca/lockbox/docs/Bonding_mechanism_with_liquidity_on_Solana?raw=true).
+
 
 ## Pre-requisites
 ```
