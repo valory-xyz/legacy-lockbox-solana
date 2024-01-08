@@ -13,6 +13,9 @@ use whirlpool::{
 use solana_program::{pubkey::Pubkey, program::invoke_signed};
 use spl_token::instruction::{burn_checked, close_account, mint_to};
 pub use state::*;
+use anchor_lang::__private::CLOSED_ACCOUNT_DISCRIMINATOR;
+use std::io::{Cursor, Write};
+use std::ops::DerefMut;
 
 declare_id!("7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ");
 
@@ -27,6 +30,8 @@ pub mod liquidity_lockbox {
   const ORCA: Pubkey = pubkey!("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");
   // OLAS-SOL Whirlpool address
   const WHIRLPOOL: Pubkey = pubkey!("5dMKUYJDsjZkAD3wiV3ViQkuq9pSmWQ5eAzcQLtDnUT3");
+  // Position account PDA discriminator
+  const PDA_HEADER: [u8; 8] = [0xaa, 0xbc, 0x8f, 0xe4, 0x7a, 0x40, 0xf7, 0xd0];
   // Full range lower and upper indexes
   const TICK_LOWER_INDEX: i32 = -443584;
   const TICK_UPPER_INDEX: i32 = 443584;
@@ -66,6 +71,18 @@ pub mod liquidity_lockbox {
     // Check the whirlpool
     if whirlpool != WHIRLPOOL {
         return Err(ErrorCode::WrongWhirlpool.into());
+    }
+
+    // Check the discriminator
+    let account = &ctx.accounts.position.to_account_info();
+
+    let data = account.try_borrow_data()?;
+    assert!(data.len() > 8);
+
+    let mut discriminator = [0u8; 8];
+    discriminator.copy_from_slice(&data[0..8]);
+    if discriminator != PDA_HEADER {
+        return Err(ErrorCode::WrongPDAHeader.into());
     }
 
     // Check for the zero liquidity in position
@@ -324,7 +341,24 @@ pub mod liquidity_lockbox {
       );
       whirlpool::cpi::close_position(cpi_ctx_close_position)?;
 
-      // TODO: Close the pda_lockbox_position account
+      // Close the pda_lockbox_position account and send all lamports to the receiver
+      // Secure reference: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/9-closing-accounts/secure/src/lib.rs
+      let dest_starting_lamports = ctx.accounts.signer.lamports();
+
+      let account = ctx.accounts.pda_lockbox_position.to_account_info();
+      **ctx.accounts.signer.lamports.borrow_mut() = dest_starting_lamports
+        .checked_add(account.lamports())
+        .unwrap();
+      **account.lamports.borrow_mut() = 0;
+
+      let mut data = account.try_borrow_mut_data()?;
+      for byte in data.deref_mut().iter_mut() {
+        *byte = 0;
+      }
+
+      let dst: &mut [u8] = &mut data;
+      let mut cursor = Cursor::new(dst);
+      cursor.write_all(&CLOSED_ACCOUNT_DISCRIMINATOR).unwrap();
     }
 
     // TODO: Check the CEI pattern if it makes sense, as it's not possible to declare the mutable before
@@ -333,6 +367,8 @@ pub mod liquidity_lockbox {
     if remainder == 0 {
       // Decrease lockbox position counter
       ctx.accounts.lockbox.num_positions -= 1;
+      // Position liquidity becomes zero
+      ctx.accounts.pda_lockbox_position.position_liquidity = 0;
     } else {
       // Update position liquidity
       ctx.accounts.pda_lockbox_position.position_liquidity = remainder;
@@ -487,6 +523,8 @@ pub enum ErrorCode {
   LiquidityOverflow,
   #[msg("Wrong whirlpool address")]
   WrongWhirlpool,
+  #[msg("Wrong PDA header")]
+  WrongPDAHeader,
   #[msg("Wrong position ID")]
   WrongPositionId,
   #[msg("Liquidity is zero")]

@@ -483,6 +483,9 @@ async function main() {
     stateData = await program.account.liquidityLockbox.fetch(pdaProgram);
     console.log("numPositions", stateData.numPositions);
 
+    accountInfo = await provider.connection.getAccountInfo(pdaLockboxPosition);
+    console.log(accountInfo);
+
     // Execute the correct withdraw tx
     console.log("Amount of bridged tokens to withdraw:", tBalalnce.toString());
     try {
@@ -533,6 +536,9 @@ async function main() {
 
   stateData = await program.account.liquidityLockbox.fetch(pdaProgram);
   console.log("Liquidity now:", stateData.totalLiquidity.toString());
+
+    accountInfo = await provider.connection.getAccountInfo(pdaLockboxPosition);
+    console.log(accountInfo);
 
 //    balance = await program.methods.getBalance()
 //      .accounts({account: bridgedTokenAccount.address})
