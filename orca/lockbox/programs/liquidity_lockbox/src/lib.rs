@@ -111,7 +111,7 @@ pub mod liquidity_lockbox {
         Transfer {
           from: ctx.accounts.position_token_account.to_account_info(),
           to: ctx.accounts.pda_position_account.to_account_info(),
-          authority: ctx.accounts.position_authority.to_account_info(),
+          authority: ctx.accounts.signer.to_account_info(),
         },
       ),
       1,
@@ -122,15 +122,15 @@ pub mod liquidity_lockbox {
       &close_account(
         ctx.accounts.token_program.key,
         ctx.accounts.position_token_account.to_account_info().key,
-        ctx.accounts.position_authority.to_account_info().key,
-        ctx.accounts.position_authority.to_account_info().key,
+        ctx.accounts.signer.to_account_info().key,
+        ctx.accounts.signer.to_account_info().key,
         &[],
       )?,
       &[
         ctx.accounts.token_program.to_account_info(),
         ctx.accounts.position_token_account.to_account_info(),
-        ctx.accounts.position_authority.to_account_info(),
-        ctx.accounts.position_authority.to_account_info(),
+        ctx.accounts.signer.to_account_info(),
+        ctx.accounts.signer.to_account_info(),
       ],
       &[],
     )?;
@@ -167,6 +167,15 @@ pub mod liquidity_lockbox {
     // Increase the amount of total bridged token liquidity and the number of position accounts
     ctx.accounts.lockbox.total_liquidity += position_liquidity;
     ctx.accounts.lockbox.num_positions += 1;
+
+    emit!(DepositEvent {
+      signer: ctx.accounts.signer.key(),
+      pda_lockbox_position: ctx.accounts.pda_lockbox_position.key(),
+      pda_position_account: ctx.accounts.pda_position_account.key(),
+      position: ctx.accounts.position.key(),
+      position_liquidity: position_liquidity,
+      timestamp: Clock::get()?.unix_timestamp
+    });
 
     Ok(())
   }
@@ -332,6 +341,18 @@ pub mod liquidity_lockbox {
     // Decrease the total liquidity amount
     ctx.accounts.lockbox.total_liquidity -= amount;
 
+    emit!(WithdrawEvent {
+      signer: ctx.accounts.signer.key(),
+      pda_lockbox_position: ctx.accounts.pda_lockbox_position.key(),
+      pda_position_account: ctx.accounts.pda_position_account.key(),
+      position: ctx.accounts.position.key(),
+      token_owner_account_a: ctx.accounts.token_owner_account_a.key(),
+      token_owner_account_b: ctx.accounts.token_owner_account_b.key(),
+      amount: amount,
+      remainder: remainder,
+      timestamp: Clock::get()?.unix_timestamp
+    });
+
     Ok(())
   }
 }
@@ -360,7 +381,7 @@ pub struct InitializeLiquidityLockbox<'info> {
 #[instruction(id: u32)]
 pub struct DepositPositionForLiquidity<'info> {
   #[account(mut)]
-  pub position_authority: Signer<'info>,
+  pub signer: Signer<'info>,
 
   pub position: Box<Account<'info, Position>>,
   #[account(mut,
@@ -375,7 +396,7 @@ pub struct DepositPositionForLiquidity<'info> {
   #[account(init,
     associated_token::authority = lockbox,
     associated_token::mint = position_mint,
-    payer = position_authority)]
+    payer = signer)]
   pub pda_position_account: Box<Account<'info, TokenAccount>>,
 
   #[account(init,
@@ -385,7 +406,7 @@ pub struct DepositPositionForLiquidity<'info> {
     ],
     bump,
     space = LockboxPosition::LEN,
-    payer = position_authority)]
+    payer = signer)]
   pub pda_lockbox_position: Box<Account<'info, LockboxPosition>>,
 
   #[account(mut)]
@@ -486,4 +507,53 @@ pub enum ErrorCode {
   WrongPositionAccount,
   #[msg("Provided wrong PDA position ATA")]
   WrongPDAPositionAccount
+}
+
+
+#[event]
+pub struct DepositEvent {
+    // Signer (user)
+    #[index]
+    pub signer: Pubkey,
+    // Created PDA lockbox position account
+    #[index]
+    pub pda_lockbox_position: Pubkey,
+    // Created PDA position account
+    #[index]
+    pub pda_position_account: Pubkey,
+
+    // Position account
+    pub position: Pubkey,
+    // Position liquidity
+    pub position_liquidity: u64,
+
+    /// Timestamp of the event
+    pub timestamp: i64
+}
+
+#[event]
+pub struct WithdrawEvent {
+    // Signer (user)
+    #[index]
+    pub signer: Pubkey,
+    // Created PDA lockbox position account
+    #[index]
+    pub pda_lockbox_position: Pubkey,
+    // Created PDA position account
+    #[index]
+    pub pda_position_account: Pubkey,
+
+    // Position account
+    pub position: Pubkey,
+    // User ATA token A
+    token_owner_account_a: Pubkey,
+    // User ATA token B
+    token_owner_account_b: Pubkey,
+    // Withdraw amount
+    pub amount: u64,
+    // Position liquidity remainder
+    pub remainder: u64,
+
+    /// Timestamp of the event
+    pub timestamp: i64
 }
