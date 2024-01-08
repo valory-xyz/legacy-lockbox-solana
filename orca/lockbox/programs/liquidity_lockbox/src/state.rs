@@ -7,8 +7,10 @@ pub struct LiquidityLockbox {
   // Bridged token mint address
   pub bridged_token_mint: Pubkey,
   // Total liquidity in a lockbox
+  // Considering OLAS and SOL inflation, it will never practically be bigger than 2^64 - 1
   pub total_liquidity: u64,
   // Total number of lockbox positions
+  // Even if position is created every second, it would take 136+ years to create 2^32 - 1 positions
   pub num_positions: u32
 }
 

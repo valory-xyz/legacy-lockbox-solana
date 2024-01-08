@@ -89,7 +89,7 @@ async function main() {
 
       // Output the estimation
       console.log("SOL max input:", DecimalUtil.fromBN(quote.tokenMaxA, token_a.decimals).toFixed(token_a.decimals));
-      console.log("USDC max input:", DecimalUtil.fromBN(quote.tokenMaxB, token_b.decimals).toFixed(token_b.decimals));
+      console.log("OLAS max input:", DecimalUtil.fromBN(quote.tokenMaxB, token_b.decimals).toFixed(token_b.decimals));
 
       // Create a transaction
       // Use openPosition method instead of openPositionWithMetadata method
@@ -118,7 +118,7 @@ async function main() {
     const bridgedTokenMint = await createMint(provider.connection, userWallet, pdaProgram, null, 8);
     console.log("Bridged token mint:", bridgedTokenMint.toBase58());
 
-    // Deploy the LiquidityLockbox program
+    // Initialize the LiquidityLockbox state
     try {
         signature = await program.methods
           .initialize(bridgedTokenMint)
@@ -137,6 +137,13 @@ async function main() {
         signature: signature,
         ...(await provider.connection.getLatestBlockhash()),
     });
+
+    // Try to initialize the LiquidityLockbox state
+    try {
+        signature = await program.methods
+          .initialize(bridgedTokenMint)
+          .rpc();
+    } catch (error) {}
 
     // Get all token accounts
     const token_accounts = (await ctx.connection.getTokenAccountsByOwner(ctx.wallet.publicKey, {programId: TOKEN_PROGRAM_ID})).value;

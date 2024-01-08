@@ -12,10 +12,10 @@ use whirlpool::{
 };
 use solana_program::{pubkey::Pubkey, program::invoke_signed};
 use spl_token::instruction::{burn_checked, close_account, mint_to};
-pub use state::*;
 use anchor_lang::__private::CLOSED_ACCOUNT_DISCRIMINATOR;
 use std::io::{Cursor, Write};
 use std::ops::DerefMut;
+pub use state::*;
 
 declare_id!("7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ");
 
@@ -106,9 +106,8 @@ pub mod liquidity_lockbox {
     }
 
     // Check the PDA address correctness
-    let position_pda = Pubkey::try_find_program_address(&[b"position", position_mint.as_ref()], &ORCA);
-    let position_pda_pubkey = position_pda.map(|(pubkey, _)| pubkey);
-    if position_pda_pubkey.unwrap() != ctx.accounts.position.key() {
+    let position_pda = Pubkey::find_program_address(&[b"position", position_mint.as_ref()], &ORCA);
+    if position_pda.0 != ctx.accounts.position.key() {
       return Err(ErrorCode::WrongPositionPDA.into());
     }
 
@@ -213,11 +212,10 @@ pub mod liquidity_lockbox {
     // TODO: any other way to get PROGRAM_ID?
     // Get the lockbox position PDA ATA
     let id = ctx.accounts.lockbox.num_positions - 1;
-    let lockbox_position = Pubkey::try_find_program_address(&[b"lockbox_position", id.to_be_bytes().as_ref()], &PROGRAM_ID);
-    let lockbox_position_pubkey = lockbox_position.map(|(pubkey, _)| pubkey);
+    let lockbox_position = Pubkey::find_program_address(&[b"lockbox_position", id.to_be_bytes().as_ref()], &PROGRAM_ID);
 
     // Check that the calculated address matches the provided PDA lockbox position
-    if lockbox_position_pubkey.unwrap() != ctx.accounts.pda_lockbox_position.key() {
+    if lockbox_position.0 != ctx.accounts.pda_lockbox_position.key() {
       return Err(ErrorCode::WrongPDAPositionAccount.into());
     }
 
@@ -253,6 +251,11 @@ pub mod liquidity_lockbox {
       ],
       &[]
     )?;
+
+    // Check the Orca Whirlpool program address
+    if ctx.accounts.whirlpool_program.key() != ORCA {
+        return Err(ErrorCode::WrongOrcaAccount.into());
+    }
 
     // Get program signer seeds
     let signer_seeds = &[&ctx.accounts.lockbox.seeds()[..]];
@@ -361,14 +364,10 @@ pub mod liquidity_lockbox {
       cursor.write_all(&CLOSED_ACCOUNT_DISCRIMINATOR).unwrap();
     }
 
-    // TODO: Check the CEI pattern if it makes sense, as it's not possible to declare the mutable before
-
     // Check the position remainder
     if remainder == 0 {
       // Decrease lockbox position counter
       ctx.accounts.lockbox.num_positions -= 1;
-      // Position liquidity becomes zero
-      ctx.accounts.pda_lockbox_position.position_liquidity = 0;
     } else {
       // Update position liquidity
       ctx.accounts.pda_lockbox_position.position_liquidity = remainder;
@@ -447,7 +446,11 @@ pub struct DepositPositionForLiquidity<'info> {
 
   #[account(mut)]
   pub bridged_token_mint: Box<Account<'info, Mint>>,
-  #[account(mut, constraint = bridged_token_account.mint == bridged_token_mint.key())]
+  #[account(mut,
+    constraint = bridged_token_account.mint == bridged_token_mint.key(),
+    constraint = lockbox.bridged_token_mint == bridged_token_mint.key(),
+  )]
+  // TODO: singer is the owner
   pub bridged_token_account: Box<Account<'info, TokenAccount>>,
 
   #[account(mut)]
@@ -493,12 +496,18 @@ pub struct WithdrawLiquidityForTokens<'info> {
   )]
   pub pda_lockbox_position: Box<Account<'info, LockboxPosition>>,
 
-  #[account(mut, constraint = token_owner_account_a.mint == whirlpool.token_mint_a)]
+  #[account(mut,
+    constraint = token_owner_account_a.mint == whirlpool.token_mint_a,
+    constraint = token_owner_account_a.mint != token_owner_account_b.mint
+  )]
   pub token_owner_account_a: Box<Account<'info, TokenAccount>>,
   #[account(mut, constraint = token_owner_account_b.mint == whirlpool.token_mint_b)]
   pub token_owner_account_b: Box<Account<'info, TokenAccount>>,
 
-  #[account(mut, constraint = token_vault_a.key() == whirlpool.token_vault_a)]
+  #[account(mut,
+    constraint = token_vault_a.key() == whirlpool.token_vault_a,
+    constraint = token_vault_a.key() != token_vault_b.key()
+  )]
   pub token_vault_a: Box<Account<'info, TokenAccount>>,
   #[account(mut, constraint = token_vault_b.key() == whirlpool.token_vault_b)]
   pub token_vault_b: Box<Account<'info, TokenAccount>>,
@@ -544,7 +553,9 @@ pub enum ErrorCode {
   #[msg("Provided wrong position ATA")]
   WrongPositionAccount,
   #[msg("Provided wrong PDA position ATA")]
-  WrongPDAPositionAccount
+  WrongPDAPositionAccount,
+  #[msg("Provided wrong Orca program account")]
+  WrongOrcaAccount
 }
 
 
