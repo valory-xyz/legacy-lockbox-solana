@@ -118,10 +118,14 @@ async function main() {
     const bridgedTokenMint = await createMint(provider.connection, userWallet, pdaProgram, null, 8);
     console.log("Bridged token mint:", bridgedTokenMint.toBase58());
 
+    let accountInfo = await provider.connection.getAccountInfo(bridgedTokenMint);
+    //console.log(accountInfo);
+
     // Initialize the LiquidityLockbox state
     try {
         signature = await program.methods
-          .initialize(bridgedTokenMint)
+          .initialize()
+          .accounts({ bridgedTokenMint: bridgedTokenMint })
           .rpc();
     } catch (error) {
         if (error instanceof Error && "message" in error) {
@@ -141,7 +145,8 @@ async function main() {
     // Try to initialize the LiquidityLockbox state
     try {
         signature = await program.methods
-          .initialize(bridgedTokenMint)
+          .initialize()
+          .accounts({ bridgedTokenMint: bridgedTokenMint })
           .rpc();
     } catch (error) {}
 
@@ -160,7 +165,7 @@ async function main() {
     }
 
     // NFT position mint
-    let accountInfo = await provider.connection.getAccountInfo(positionMint);
+    accountInfo = await provider.connection.getAccountInfo(positionMint);
     //console.log(accountInfo);
 
     // Get the ATA of the userWallet address, and if it does not exist, create it
@@ -491,7 +496,7 @@ async function main() {
     console.log("numPositions", stateData.numPositions);
 
     accountInfo = await provider.connection.getAccountInfo(pdaLockboxPosition);
-    console.log(accountInfo);
+    //console.log(accountInfo);
 
     // Execute the correct withdraw tx
     console.log("Amount of bridged tokens to withdraw:", tBalalnce.toString());
@@ -544,8 +549,8 @@ async function main() {
   stateData = await program.account.liquidityLockbox.fetch(pdaProgram);
   console.log("Liquidity now:", stateData.totalLiquidity.toString());
 
-    accountInfo = await provider.connection.getAccountInfo(pdaLockboxPosition);
-    console.log(accountInfo);
+  accountInfo = await provider.connection.getAccountInfo(pdaLockboxPosition);
+  //console.log(accountInfo);
 
 //    balance = await program.methods.getBalance()
 //      .accounts({account: bridgedTokenAccount.address})

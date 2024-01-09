@@ -30,8 +30,8 @@ pub mod liquidity_lockbox {
   const ORCA: Pubkey = pubkey!("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");
   // OLAS-SOL Whirlpool address
   const WHIRLPOOL: Pubkey = pubkey!("5dMKUYJDsjZkAD3wiV3ViQkuq9pSmWQ5eAzcQLtDnUT3");
-  // Position account PDA discriminator
-  const PDA_HEADER: [u8; 8] = [0xaa, 0xbc, 0x8f, 0xe4, 0x7a, 0x40, 0xf7, 0xd0];
+  // Position account discriminator
+  const POSITION_HEADER: [u8; 8] = [0xaa, 0xbc, 0x8f, 0xe4, 0x7a, 0x40, 0xf7, 0xd0];
   // Full range lower and upper indexes
   const TICK_LOWER_INDEX: i32 = -443584;
   const TICK_UPPER_INDEX: i32 = 443584;
@@ -40,12 +40,8 @@ pub mod liquidity_lockbox {
 
 
   /// Initializes a Lockbox account that stores state data.
-  ///
-  /// ### Parameters
-  /// - `bridged_token_mint` - Bridged token mint for tokens issued in return for the position liquidity NFT.
   pub fn initialize(
-    ctx: Context<InitializeLiquidityLockbox>,
-    bridged_token_mint: Pubkey
+    ctx: Context<InitializeLiquidityLockbox>
   ) -> Result<()> {
     // Get the lockbox account
     let lockbox = &mut ctx.accounts.lockbox;
@@ -56,7 +52,7 @@ pub mod liquidity_lockbox {
     // Initialize lockbox account
     Ok(lockbox.initialize(
       bump,
-      bridged_token_mint
+      ctx.accounts.bridged_token_mint.key()
     )?)
   }
 
@@ -81,7 +77,7 @@ pub mod liquidity_lockbox {
 
     let mut discriminator = [0u8; 8];
     discriminator.copy_from_slice(&data[0..8]);
-    if discriminator != PDA_HEADER {
+    if discriminator != POSITION_HEADER {
         return Err(ErrorCode::WrongPDAHeader.into());
     }
 
@@ -406,6 +402,9 @@ pub struct InitializeLiquidityLockbox<'info> {
     space = LiquidityLockbox::LEN)]
   pub lockbox: Box<Account<'info, LiquidityLockbox>>,
 
+  #[account(constraint = bridged_token_mint.mint_authority.unwrap() == lockbox.key())]
+  pub bridged_token_mint: Box<Account<'info, Mint>>,
+
   #[account(address = token::ID)]
   pub token_program: Program<'info, Token>,
   pub system_program: Program<'info, System>,
@@ -447,10 +446,10 @@ pub struct DepositPositionForLiquidity<'info> {
   #[account(mut)]
   pub bridged_token_mint: Box<Account<'info, Mint>>,
   #[account(mut,
-    constraint = bridged_token_account.mint == bridged_token_mint.key(),
+    constraint = bridged_token_account.mint == lockbox.bridged_token_mint,
     constraint = lockbox.bridged_token_mint == bridged_token_mint.key(),
+    constraint = bridged_token_account.owner == signer.key(),
   )]
-  // TODO: singer is the owner
   pub bridged_token_account: Box<Account<'info, TokenAccount>>,
 
   #[account(mut)]
@@ -472,10 +471,14 @@ pub struct WithdrawLiquidityForTokens<'info> {
 
   #[account(mut)]
   pub bridged_token_mint: Box<Account<'info, Mint>>,
-  #[account(mut, constraint = bridged_token_account.mint == bridged_token_mint.key())]
+  #[account(mut,
+    constraint = bridged_token_account.mint == lockbox.bridged_token_mint,
+    constraint = lockbox.bridged_token_mint == bridged_token_mint.key(),
+    constraint = bridged_token_account.owner == signer.key(),
+  )]
   pub bridged_token_account: Box<Account<'info, TokenAccount>>,
 
-  #[account(mut, has_one = whirlpool)]
+  #[account(mut, has_one = whirlpool, has_one = position_mint)]
   pub position: Box<Account<'info, Position>>,
   #[account(mut,
     constraint = pda_position_account.mint == position.position_mint,
