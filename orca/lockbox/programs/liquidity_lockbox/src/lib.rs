@@ -78,7 +78,7 @@ pub mod liquidity_lockbox {
     let mut discriminator = [0u8; 8];
     discriminator.copy_from_slice(&data[0..8]);
     if discriminator != POSITION_HEADER {
-        return Err(ErrorCode::WrongPDAHeader.into());
+        return Err(ErrorCode::WrongPositionHeader.into());
     }
 
     // Check for the zero liquidity in position
@@ -101,10 +101,16 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::WrongOwner.into());
     }
 
-    // Check the PDA address correctness
+    // Check the position PDA address correctness
     let position_pda = Pubkey::find_program_address(&[b"position", position_mint.as_ref()], &ORCA);
     if position_pda.0 != ctx.accounts.position.key() {
       return Err(ErrorCode::WrongPositionPDA.into());
+    }
+
+    // Check the lockbox PDA address correctness
+    let lockbox_pda = Pubkey::find_program_address(&[b"liquidity_lockbox"], &PROGRAM_ID);
+    if lockbox_pda.0 != ctx.accounts.lockbox.key() {
+      return Err(ErrorCode::WrongLockboxPDA.into());
     }
 
     // Check the id that has to match the number of positions in order to create a correct account
@@ -213,6 +219,12 @@ pub mod liquidity_lockbox {
     // Check that the calculated address matches the provided PDA lockbox position
     if lockbox_position.0 != ctx.accounts.pda_lockbox_position.key() {
       return Err(ErrorCode::WrongPDAPositionAccount.into());
+    }
+
+    // Check the lockbox PDA address correctness
+    let lockbox_pda = Pubkey::find_program_address(&[b"liquidity_lockbox"], &PROGRAM_ID);
+    if lockbox_pda.0 != ctx.accounts.lockbox.key() {
+      return Err(ErrorCode::WrongLockboxPDA.into());
     }
 
     // Get the position liquidity
@@ -535,8 +547,8 @@ pub enum ErrorCode {
   LiquidityOverflow,
   #[msg("Wrong whirlpool address")]
   WrongWhirlpool,
-  #[msg("Wrong PDA header")]
-  WrongPDAHeader,
+  #[msg("Wrong position PDA header")]
+  WrongPositionHeader,
   #[msg("Wrong position ID")]
   WrongPositionId,
   #[msg("Liquidity is zero")]
@@ -553,6 +565,8 @@ pub enum ErrorCode {
   WrongOwner,
   #[msg("Provided wrong position PDA")]
   WrongPositionPDA,
+  #[msg("Provided wrong lockbox PDA")]
+  WrongLockboxPDA,
   #[msg("Provided wrong position ATA")]
   WrongPositionAccount,
   #[msg("Provided wrong PDA position ATA")]

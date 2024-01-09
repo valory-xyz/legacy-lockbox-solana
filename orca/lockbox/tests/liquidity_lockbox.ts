@@ -112,7 +112,7 @@ async function main() {
     // Find a PDA account for the program
     const [pdaProgram, bump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("liquidity_lockbox", "utf-8")], program.programId);
     const bumpBytes = Buffer.from(new Uint8Array([bump]));
-    console.log("Program PDA:", pdaProgram.toBase58());
+    console.log("Lockbox PDA:", pdaProgram.toBase58());
 
     // Create new bridged token mint with the pda mint authority
     const bridgedTokenMint = await createMint(provider.connection, userWallet, pdaProgram, null, 8);
