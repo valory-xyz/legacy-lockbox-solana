@@ -268,8 +268,8 @@ lockbox/programs/liquidity_lockbox/src/lib.rs:560
 
 https://github.com/coral-xyz/sealevel-attacks/tree/master/programs/6-duplicate-mutable-accounts
 ```
-[sec3-report.PNG] (https://github.com/valory-xyz/solana-sandbox//blob/main/orca/lockbox/audits/internal/analysis/sec3-report.PNG) <br>
-[x] Fixed.
+[sec3-report.PNG](https://github.com/valory-xyz/solana-sandbox//blob/main/orca/lockbox/audits/internal/analysis/sec3-report.PNG) <br>
+[x] Fixed, see [here](https://github.com/valory-xyz/solana-sandbox//blob/main/orca/lockbox/audits/internal/analysis/sec3-report_fixed.PNG)
 
 ##### Missing ownership checks (e.g., by checking  AccountInfo::owner)
 [x] Fixed.
