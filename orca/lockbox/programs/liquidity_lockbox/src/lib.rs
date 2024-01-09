@@ -54,10 +54,12 @@ pub mod liquidity_lockbox {
     let bump = *ctx.bumps.get("lockbox").unwrap();
 
     // Initialize lockbox account
-    Ok(lockbox.initialize(
+    lockbox.initialize(
       bump,
       ctx.accounts.bridged_token_mint.key()
-    )?)
+    )?;
+
+    Ok(())
   }
 
   /// Deposits an NFT position under the Lockbox management and gets bridged tokens minted in return.
@@ -194,8 +196,7 @@ pub mod liquidity_lockbox {
       pda_lockbox_position: ctx.accounts.pda_lockbox_position.key(),
       pda_position_account: ctx.accounts.pda_position_account.key(),
       position: ctx.accounts.position.key(),
-      position_liquidity: position_liquidity,
-      timestamp: Clock::get()?.unix_timestamp
+      position_liquidity,
     });
 
     Ok(())
@@ -410,9 +411,8 @@ pub mod liquidity_lockbox {
       position: ctx.accounts.position.key(),
       token_owner_account_a: ctx.accounts.token_owner_account_a.key(),
       token_owner_account_b: ctx.accounts.token_owner_account_b.key(),
-      amount: amount,
-      remainder: remainder,
-      timestamp: Clock::get()?.unix_timestamp
+      amount,
+      remainder
     });
 
     Ok(())
@@ -554,7 +554,7 @@ pub struct WithdrawLiquidityForTokens<'info> {
   #[account(mut, constraint = token_vault_b.key() == whirlpool.token_vault_b)]
   pub token_vault_b: Box<Account<'info, TokenAccount>>,
 
-  #[account(mut, has_one = whirlpool)]
+  #[account(mut, has_one = whirlpool, constraint = tick_array_lower.key() != tick_array_upper.key())]
   pub tick_array_lower: AccountLoader<'info, TickArray>,
   #[account(mut, has_one = whirlpool)]
   pub tick_array_upper: AccountLoader<'info, TickArray>,
@@ -620,10 +620,7 @@ pub struct DepositEvent {
     // Position account
     pub position: Pubkey,
     // Position liquidity
-    pub position_liquidity: u64,
-
-    /// Timestamp of the event
-    pub timestamp: i64
+    pub position_liquidity: u64
 }
 
 #[event]
@@ -647,8 +644,5 @@ pub struct WithdrawEvent {
     // Withdraw amount
     pub amount: u64,
     // Position liquidity remainder
-    pub remainder: u64,
-
-    /// Timestamp of the event
-    pub timestamp: i64
+    pub remainder: u64
 }

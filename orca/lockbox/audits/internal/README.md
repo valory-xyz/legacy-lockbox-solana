@@ -221,3 +221,56 @@ https://doc.rust-lang.org/rust-by-example/meta/doc.html <br>
 
 #### Cleaning repo
 Is it possible to make a project containing only `lockbox`
+
+## Re-audit 09.01.24
+The review has been performed based on the contract code in the following repository:<br>
+`https://github.com/valory-xyz/solana-sandbox` <br>
+commit: `64ebb0f0129dde2de1226931f22aaeb218885ee8` or `v0.1.1-pre-internal-audit`<br> 
+
+## Security issues.
+### Problems found instrumentally
+##### cargo clippy 
+https://github.com/rust-lang/rust-clippy
+```
+cargo clippy 2> audits/internal/analysis/cargo-clippy-2.txt
+```
+re-run. Pay attention to result of run. 
+[cargo-clippy-2.txt](https://github.com/valory-xyz/solana-sandbox//blob/main/orca/lockbox/audits/internal/analysis/cargo-clippy-2.txt) <br>
+[x] Fixed.
+
+##### Sec3 x-ray scanner
+```
+These two accounts are both mutable and may be the same account
+lockbox/programs/liquidity_lockbox/src/lib.rs:558
+  )]
+  pub token_vault_a: Box<Account<'info, TokenAccount>>,
+  #[account(mut, constraint = token_vault_b.key() == whirlpool.token_vault_b)]
+  pub token_vault_b: Box<Account<'info, TokenAccount>>,
+  #[account(mut, has_one = whirlpool)]
+  pub tick_array_lower: AccountLoader<'info, TickArray>,
+  #[account(mut, has_one = whirlpool)]
+  pub tick_array_upper: AccountLoader<'info, TickArray>,
+  #[account(mut)]
+  pub lockbox: Box<Account<'info, LiquidityLockbox>>,
+  pub whirlpool_program: Program<'info, whirlpool::program::Whirlpool>,
+lockbox/programs/liquidity_lockbox/src/lib.rs:560
+
+  #[account(mut, constraint = token_vault_b.key() == whirlpool.token_vault_b)]
+  pub token_vault_b: Box<Account<'info, TokenAccount>>,
+  #[account(mut, has_one = whirlpool)]
+  pub tick_array_lower: AccountLoader<'info, TickArray>,
+  #[account(mut, has_one = whirlpool)]
+  pub tick_array_upper: AccountLoader<'info, TickArray>,
+  #[account(mut)]
+  pub lockbox: Box<Account<'info, LiquidityLockbox>>,
+  pub whirlpool_program: Program<'info, whirlpool::program::Whirlpool>,
+  #[account(address = token::ID)]
+
+https://github.com/coral-xyz/sealevel-attacks/tree/master/programs/6-duplicate-mutable-accounts
+```
+[sec3-report.PNG](https://github.com/valory-xyz/solana-sandbox//blob/main/orca/lockbox/audits/internal/analysis/sec3-report.PNG) <br>
+[x] Fixed, see [here](https://github.com/valory-xyz/solana-sandbox//blob/main/orca/lockbox/audits/internal/analysis/sec3-report_fixed.PNG)
+
+##### Missing ownership checks (e.g., by checking  AccountInfo::owner)
+[x] Fixed.
+

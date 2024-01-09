@@ -300,8 +300,8 @@ async function main() {
 //    console.log(accountInfo);
 
     // Get the state data
-    let stateData = await program.account.liquidityLockbox.fetch(pdaProgram);
-    const numPosition = stateData.numPositions;
+    let lockboxStateData = await program.account.liquidityLockbox.fetch(pdaProgram);
+    const numPosition = lockboxStateData.numPositions;
 
     // Find a PDA account for the lockbox position
     const bytesStr = Buffer.from("lockbox_position", "utf-8");
@@ -405,8 +405,8 @@ async function main() {
     }
   });
 
-  stateData = await program.account.liquidityLockbox.fetch(pdaProgram);
-  expect(data.liquidity.toString()).toEqual(stateData.totalLiquidity.toString());
+  lockboxStateData = await program.account.liquidityLockbox.fetch(pdaProgram);
+  expect(data.liquidity.toString()).toEqual(lockboxStateData.totalLiquidity.toString());
 
 //    balance = await program.methods.getBalance()
 //      .accounts({account: pdaPositionAccount.address})
@@ -434,7 +434,6 @@ async function main() {
 
     const bigBalance = new anchor.BN("4000000000");
     // Try to get amounts and positions for a bigger provided liquidity amount than the total liquidity
-    // Try to execute the withdraw with the incorrect position address
     try {
         signature = await program.methods.withdraw(bigBalance)
           .accounts(
@@ -491,11 +490,18 @@ async function main() {
           .rpc();
     } catch (error) {}
 
-    stateData = await program.account.liquidityLockbox.fetch(pdaProgram);
-    console.log("numPositions", stateData.numPositions);
+    lockboxStateData = await program.account.liquidityLockbox.fetch(pdaProgram);
+    console.log("numPositions", lockboxStateData.numPositions);
 
     accountInfo = await provider.connection.getAccountInfo(pdaLockboxPosition);
     //console.log(accountInfo);
+
+    // Recover all the necessary data from the corresponding data account
+    let positionStateData = await program.account.lockboxPosition.fetch(pdaLockboxPosition);
+    // Check that accounts match
+    expect(positionStateData.positionAccount.toString()).toEqual(position.publicKey.toString());
+    expect(positionStateData.positionPdaAta.toString()).toEqual(pdaPositionAccount.toString());
+    expect(positionStateData.positionLiquidity.toString()).toEqual(data.liquidity.toString());
 
     // Execute the correct withdraw tx
     console.log("Amount of bridged tokens to withdraw:", tBalalnce.toString());
@@ -545,8 +551,8 @@ async function main() {
     }
   });
 
-  stateData = await program.account.liquidityLockbox.fetch(pdaProgram);
-  console.log("Liquidity now:", stateData.totalLiquidity.toString());
+  lockboxStateData = await program.account.liquidityLockbox.fetch(pdaProgram);
+  console.log("Liquidity now:", lockboxStateData.totalLiquidity.toString());
 
   accountInfo = await provider.connection.getAccountInfo(pdaLockboxPosition);
   //console.log(accountInfo);
