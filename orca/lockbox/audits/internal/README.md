@@ -236,6 +236,7 @@ cargo clippy 2> audits/internal/analysis/cargo-clippy-2.txt
 ```
 re-run. Pay attention to result of run. 
 [cargo-clippy-2.txt](https://github.com/valory-xyz/solana-sandbox//blob/main/orca/lockbox/audits/internal/analysis/cargo-clippy-2.txt) <br>
+[x] Fixed.
 
 ##### Sec3 x-ray scanner
 ```
@@ -268,7 +269,8 @@ lockbox/programs/liquidity_lockbox/src/lib.rs:560
 https://github.com/coral-xyz/sealevel-attacks/tree/master/programs/6-duplicate-mutable-accounts
 ```
 [sec3-report.PNG] (https://github.com/valory-xyz/solana-sandbox//blob/main/orca/lockbox/audits/internal/analysis/sec3-report.PNG) <br>
+[x] Fixed.
 
 ##### Missing ownership checks (e.g., by checking  AccountInfo::owner)
-To re-discussion.
+[x] Fixed.
 
