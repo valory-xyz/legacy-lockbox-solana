@@ -12,6 +12,9 @@ use whirlpool::{
 };
 use solana_program::{pubkey::Pubkey, program::invoke_signed};
 use spl_token::instruction::{burn_checked, close_account, mint_to};
+use anchor_lang::__private::CLOSED_ACCOUNT_DISCRIMINATOR;
+use std::io::{Cursor, Write};
+use std::ops::DerefMut;
 pub use state::*;
 
 declare_id!("7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ");
@@ -27,6 +30,12 @@ pub mod liquidity_lockbox {
   const ORCA: Pubkey = pubkey!("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");
   // OLAS-SOL Whirlpool address
   const WHIRLPOOL: Pubkey = pubkey!("5dMKUYJDsjZkAD3wiV3ViQkuq9pSmWQ5eAzcQLtDnUT3");
+  // SOL address
+  const SOL: Pubkey = pubkey!("So11111111111111111111111111111111111111112");
+  // OLAS address
+  const OLAS: Pubkey = pubkey!("Ez3nzG9ofodYCvEmw73XhQ87LWNYVRM2s7diB5tBZPyM");
+  // Position account discriminator
+  const POSITION_HEADER: [u8; 8] = [0xaa, 0xbc, 0x8f, 0xe4, 0x7a, 0x40, 0xf7, 0xd0];
   // Full range lower and upper indexes
   const TICK_LOWER_INDEX: i32 = -443584;
   const TICK_UPPER_INDEX: i32 = 443584;
@@ -35,12 +44,8 @@ pub mod liquidity_lockbox {
 
 
   /// Initializes a Lockbox account that stores state data.
-  ///
-  /// ### Parameters
-  /// - `bridged_token_mint` - Bridged token mint for tokens issued in return for the position liquidity NFT.
   pub fn initialize(
-    ctx: Context<InitializeLiquidityLockbox>,
-    bridged_token_mint: Pubkey
+    ctx: Context<InitializeLiquidityLockbox>
   ) -> Result<()> {
     // Get the lockbox account
     let lockbox = &mut ctx.accounts.lockbox;
@@ -48,9 +53,10 @@ pub mod liquidity_lockbox {
     // Get the anchor-derived bump
     let bump = *ctx.bumps.get("lockbox").unwrap();
 
+    // Initialize lockbox account
     Ok(lockbox.initialize(
       bump,
-      bridged_token_mint
+      ctx.accounts.bridged_token_mint.key()
     )?)
   }
 
@@ -65,6 +71,18 @@ pub mod liquidity_lockbox {
     // Check the whirlpool
     if whirlpool != WHIRLPOOL {
         return Err(ErrorCode::WrongWhirlpool.into());
+    }
+
+    // Check the discriminator
+    let account = &ctx.accounts.position.to_account_info();
+
+    let data = account.try_borrow_data()?;
+    assert!(data.len() > 8);
+
+    let mut discriminator = [0u8; 8];
+    discriminator.copy_from_slice(&data[0..8]);
+    if discriminator != POSITION_HEADER {
+        return Err(ErrorCode::WrongPositionHeader.into());
     }
 
     // Check for the zero liquidity in position
@@ -82,19 +100,24 @@ pub mod liquidity_lockbox {
     }
 
     // Check the PDA ownership
-    let owner = ctx.accounts.position.to_account_info().owner;
-    if owner != &ORCA {
+    if ctx.accounts.position.to_account_info().owner != &ORCA {
       return Err(ErrorCode::WrongOwner.into());
     }
 
-    // Check the PDA address correctness
-    let position_pda = Pubkey::try_find_program_address(&[b"position", position_mint.as_ref()], &ORCA);
-    let position_pda_pubkey = position_pda.map(|(pubkey, _)| pubkey);
-    if position_pda_pubkey.unwrap() != ctx.accounts.position.key() {
+    // Check the position PDA address correctness
+    let position_pda = Pubkey::find_program_address(&[b"position", position_mint.as_ref()], &ORCA);
+    if position_pda.0 != ctx.accounts.position.key() {
       return Err(ErrorCode::WrongPositionPDA.into());
     }
 
+    // Check the lockbox PDA address correctness
+    let lockbox_pda = Pubkey::find_program_address(&[b"liquidity_lockbox"], &PROGRAM_ID);
+    if lockbox_pda.0 != ctx.accounts.lockbox.key() {
+      return Err(ErrorCode::WrongLockboxPDA.into());
+    }
+
     // Check the id that has to match the number of positions in order to create a correct account
+    // The position needs to be provided as an argument since it's passed into the instruction field
     let num_positions = ctx.accounts.lockbox.num_positions;
     if num_positions != id {
       return Err(ErrorCode::WrongPositionId.into());
@@ -109,7 +132,7 @@ pub mod liquidity_lockbox {
         Transfer {
           from: ctx.accounts.position_token_account.to_account_info(),
           to: ctx.accounts.pda_position_account.to_account_info(),
-          authority: ctx.accounts.position_authority.to_account_info(),
+          authority: ctx.accounts.signer.to_account_info(),
         },
       ),
       1,
@@ -120,15 +143,15 @@ pub mod liquidity_lockbox {
       &close_account(
         ctx.accounts.token_program.key,
         ctx.accounts.position_token_account.to_account_info().key,
-        ctx.accounts.position_authority.to_account_info().key,
-        ctx.accounts.position_authority.to_account_info().key,
+        ctx.accounts.signer.to_account_info().key,
+        ctx.accounts.signer.to_account_info().key,
         &[],
       )?,
       &[
         ctx.accounts.token_program.to_account_info(),
         ctx.accounts.position_token_account.to_account_info(),
-        ctx.accounts.position_authority.to_account_info(),
-        ctx.accounts.position_authority.to_account_info(),
+        ctx.accounts.signer.to_account_info(),
+        ctx.accounts.signer.to_account_info(),
       ],
       &[],
     )?;
@@ -163,9 +186,17 @@ pub mod liquidity_lockbox {
     )?;
 
     // Increase the amount of total bridged token liquidity and the number of position accounts
-    let lockbox = &mut ctx.accounts.lockbox;
-    lockbox.total_liquidity += position_liquidity;
-    lockbox.num_positions += 1;
+    ctx.accounts.lockbox.total_liquidity += position_liquidity;
+    ctx.accounts.lockbox.num_positions += 1;
+
+    emit!(DepositEvent {
+      signer: ctx.accounts.signer.key(),
+      pda_lockbox_position: ctx.accounts.pda_lockbox_position.key(),
+      pda_position_account: ctx.accounts.pda_position_account.key(),
+      position: ctx.accounts.position.key(),
+      position_liquidity: position_liquidity,
+      timestamp: Clock::get()?.unix_timestamp
+    });
 
     Ok(())
   }
@@ -178,20 +209,41 @@ pub mod liquidity_lockbox {
     ctx: Context<WithdrawLiquidityForTokens>,
     amount: u64,
   ) -> Result<()> {
-    // Get the lockbox state
-    let lockbox = &ctx.accounts.lockbox;
-
     // Check if there is any liquidity left in the Lockbox
-    if lockbox.total_liquidity == 0 {
+    if ctx.accounts.lockbox.total_liquidity == 0 {
       return Err(ErrorCode::TotalLiquidityZero.into());
     }
 
+    // TODO: any other way to get PROGRAM_ID?
     // Get the lockbox position PDA ATA
-    let id = lockbox.num_positions - 1;
-    let lockbox_position = Pubkey::try_find_program_address(&[b"lockbox_position", id.to_be_bytes().as_ref()], &PROGRAM_ID);
-    let lockbox_position_pubkey = lockbox_position.map(|(pubkey, _)| pubkey);
-    if lockbox_position_pubkey.unwrap() != ctx.accounts.pda_lockbox_position.key() {
+    let id = ctx.accounts.lockbox.num_positions - 1;
+    let lockbox_position = Pubkey::find_program_address(&[b"lockbox_position", id.to_be_bytes().as_ref()], &PROGRAM_ID);
+
+    // Check that the calculated address matches the provided PDA lockbox position
+    if lockbox_position.0 != ctx.accounts.pda_lockbox_position.key() {
       return Err(ErrorCode::WrongPDAPositionAccount.into());
+    }
+
+    // Check the lockbox PDA address correctness
+    let lockbox_pda = Pubkey::find_program_address(&[b"liquidity_lockbox"], &PROGRAM_ID);
+    if lockbox_pda.0 != ctx.accounts.lockbox.key() {
+      return Err(ErrorCode::WrongLockboxPDA.into());
+    }
+
+    // Check that the first token is SOL
+    if ctx.accounts.token_owner_account_a.mint != SOL || ctx.accounts.token_vault_a.mint != SOL {
+      return Err(ErrorCode::WrongTokenMint.into());
+    }
+
+    // Check that the second token is OLAS
+    if ctx.accounts.token_owner_account_b.mint != OLAS || ctx.accounts.token_vault_b.mint != OLAS {
+      return Err(ErrorCode::WrongTokenMint.into());
+    }
+
+    // Check tick arrays owner
+    if ctx.accounts.tick_array_lower.to_account_info().owner != &ORCA ||
+      ctx.accounts.tick_array_upper.to_account_info().owner != &ORCA {
+      return Err(ErrorCode::WrongOwner.into());
     }
 
     // Get the position liquidity
@@ -226,6 +278,11 @@ pub mod liquidity_lockbox {
       ],
       &[]
     )?;
+
+    // Check the Orca Whirlpool program address
+    if ctx.accounts.whirlpool_program.key() != ORCA {
+        return Err(ErrorCode::WrongOrcaAccount.into());
+    }
 
     // Get program signer seeds
     let signer_seeds = &[&ctx.accounts.lockbox.seeds()[..]];
@@ -313,13 +370,30 @@ pub mod liquidity_lockbox {
         signer_seeds
       );
       whirlpool::cpi::close_position(cpi_ctx_close_position)?;
-    }
 
-    // TODO: Check the CEI pattern if it makes sense, as it's not possible to declare the mutable before
+      // Close the pda_lockbox_position account and send all lamports to the receiver
+      // Secure reference: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/9-closing-accounts/secure/src/lib.rs
+      let dest_starting_lamports = ctx.accounts.signer.lamports();
+
+      let account = ctx.accounts.pda_lockbox_position.to_account_info();
+      **ctx.accounts.signer.lamports.borrow_mut() = dest_starting_lamports
+        .checked_add(account.lamports())
+        .unwrap();
+      **account.lamports.borrow_mut() = 0;
+
+      let mut data = account.try_borrow_mut_data()?;
+      for byte in data.deref_mut().iter_mut() {
+        *byte = 0;
+      }
+
+      let dst: &mut [u8] = &mut data;
+      let mut cursor = Cursor::new(dst);
+      cursor.write_all(&CLOSED_ACCOUNT_DISCRIMINATOR).unwrap();
+    }
 
     // Check the position remainder
     if remainder == 0 {
-      // Remove the last lockbox position account
+      // Decrease lockbox position counter
       ctx.accounts.lockbox.num_positions -= 1;
     } else {
       // Update position liquidity
@@ -328,6 +402,18 @@ pub mod liquidity_lockbox {
 
     // Decrease the total liquidity amount
     ctx.accounts.lockbox.total_liquidity -= amount;
+
+    emit!(WithdrawEvent {
+      signer: ctx.accounts.signer.key(),
+      pda_lockbox_position: ctx.accounts.pda_lockbox_position.key(),
+      pda_position_account: ctx.accounts.pda_position_account.key(),
+      position: ctx.accounts.position.key(),
+      token_owner_account_a: ctx.accounts.token_owner_account_a.key(),
+      token_owner_account_b: ctx.accounts.token_owner_account_b.key(),
+      amount: amount,
+      remainder: remainder,
+      timestamp: Clock::get()?.unix_timestamp
+    });
 
     Ok(())
   }
@@ -344,8 +430,11 @@ pub struct InitializeLiquidityLockbox<'info> {
     ],
     bump,
     payer = signer,
-    space = 10240)]
+    space = LiquidityLockbox::LEN)]
   pub lockbox: Box<Account<'info, LiquidityLockbox>>,
+
+  #[account(constraint = bridged_token_mint.mint_authority.unwrap() == lockbox.key())]
+  pub bridged_token_mint: Box<Account<'info, Mint>>,
 
   #[account(address = token::ID)]
   pub token_program: Program<'info, Token>,
@@ -357,22 +446,25 @@ pub struct InitializeLiquidityLockbox<'info> {
 #[instruction(id: u32)]
 pub struct DepositPositionForLiquidity<'info> {
   #[account(mut)]
-  pub position_authority: Signer<'info>,
+  pub signer: Signer<'info>,
 
   pub position: Box<Account<'info, Position>>,
   #[account(mut,
+    constraint = signer.key == &position_token_account.owner,
     constraint = position_token_account.mint == position.position_mint,
     constraint = position_token_account.amount == 1
   )]
   pub position_token_account: Box<Account<'info, TokenAccount>>,
 
-  #[account(address = position_token_account.mint)]
+  #[account(address = position_token_account.mint,
+    constraint = position_mint.supply == 1
+  )]
   pub position_mint: Account<'info, Mint>,
 
   #[account(init,
     associated_token::authority = lockbox,
     associated_token::mint = position_mint,
-    payer = position_authority)]
+    payer = signer)]
   pub pda_position_account: Box<Account<'info, TokenAccount>>,
 
   #[account(init,
@@ -381,13 +473,17 @@ pub struct DepositPositionForLiquidity<'info> {
       id.to_be_bytes().as_ref()
     ],
     bump,
-    space = 10000,
-    payer = position_authority)]
+    space = LockboxPosition::LEN,
+    payer = signer)]
   pub pda_lockbox_position: Box<Account<'info, LockboxPosition>>,
 
   #[account(mut)]
   pub bridged_token_mint: Box<Account<'info, Mint>>,
-  #[account(mut, constraint = bridged_token_account.mint == bridged_token_mint.key())]
+  #[account(mut,
+    constraint = bridged_token_account.mint == lockbox.bridged_token_mint,
+    constraint = bridged_token_mint.key() == lockbox.bridged_token_mint,
+    constraint = signer.key == &bridged_token_account.owner,
+  )]
   pub bridged_token_account: Box<Account<'info, TokenAccount>>,
 
   #[account(mut)]
@@ -409,20 +505,25 @@ pub struct WithdrawLiquidityForTokens<'info> {
 
   #[account(mut)]
   pub bridged_token_mint: Box<Account<'info, Mint>>,
-  #[account(mut, constraint = bridged_token_account.mint == bridged_token_mint.key())]
+  #[account(mut,
+    constraint = bridged_token_account.mint == lockbox.bridged_token_mint,
+    constraint = lockbox.bridged_token_mint == bridged_token_mint.key(),
+    constraint = signer.key == &bridged_token_account.owner,
+  )]
   pub bridged_token_account: Box<Account<'info, TokenAccount>>,
 
-  #[account(mut, has_one = whirlpool)]
+  #[account(mut, has_one = whirlpool, has_one = position_mint)]
   pub position: Box<Account<'info, Position>>,
   #[account(mut,
     constraint = pda_position_account.mint == position.position_mint,
-    constraint = pda_position_account.amount == 1
+    constraint = pda_position_account.amount == 1,
+    constraint = lockbox.key() == pda_position_account.owner
   )]
   pub pda_position_account: Box<Account<'info, TokenAccount>>,
 
   #[account(mut,
     address = position.position_mint,
-    constraint = position.whirlpool == whirlpool.key()
+    constraint = position_mint.supply == 1
   )]
   pub position_mint: Box<Account<'info, Mint>>,
 
@@ -433,12 +534,22 @@ pub struct WithdrawLiquidityForTokens<'info> {
   )]
   pub pda_lockbox_position: Box<Account<'info, LockboxPosition>>,
 
-  #[account(mut, constraint = token_owner_account_a.mint == whirlpool.token_mint_a)]
+  #[account(mut,
+    constraint = token_owner_account_a.mint == whirlpool.token_mint_a,
+    constraint = token_owner_account_a.mint != token_owner_account_b.mint,
+    constraint = signer.key == &token_owner_account_a.owner
+  )]
   pub token_owner_account_a: Box<Account<'info, TokenAccount>>,
-  #[account(mut, constraint = token_owner_account_b.mint == whirlpool.token_mint_b)]
+  #[account(mut,
+    constraint = token_owner_account_b.mint == whirlpool.token_mint_b,
+    constraint = signer.key == &token_owner_account_b.owner
+  )]
   pub token_owner_account_b: Box<Account<'info, TokenAccount>>,
 
-  #[account(mut, constraint = token_vault_a.key() == whirlpool.token_vault_a)]
+  #[account(mut,
+    constraint = token_vault_a.key() == whirlpool.token_vault_a,
+    constraint = token_vault_a.key() != token_vault_b.key()
+  )]
   pub token_vault_a: Box<Account<'info, TokenAccount>>,
   #[account(mut, constraint = token_vault_b.key() == whirlpool.token_vault_b)]
   pub token_vault_b: Box<Account<'info, TokenAccount>>,
@@ -463,6 +574,8 @@ pub enum ErrorCode {
   LiquidityOverflow,
   #[msg("Wrong whirlpool address")]
   WrongWhirlpool,
+  #[msg("Wrong position PDA header")]
+  WrongPositionHeader,
   #[msg("Wrong position ID")]
   WrongPositionId,
   #[msg("Liquidity is zero")]
@@ -479,8 +592,63 @@ pub enum ErrorCode {
   WrongOwner,
   #[msg("Provided wrong position PDA")]
   WrongPositionPDA,
+  #[msg("Provided wrong lockbox PDA")]
+  WrongLockboxPDA,
   #[msg("Provided wrong position ATA")]
   WrongPositionAccount,
   #[msg("Provided wrong PDA position ATA")]
-  WrongPDAPositionAccount
+  WrongPDAPositionAccount,
+  #[msg("Provided wrong Orca program account")]
+  WrongOrcaAccount,
+  #[msg("Wrong token mint")]
+  WrongTokenMint
+}
+
+
+#[event]
+pub struct DepositEvent {
+    // Signer (user)
+    #[index]
+    pub signer: Pubkey,
+    // Created PDA lockbox position account
+    #[index]
+    pub pda_lockbox_position: Pubkey,
+    // Created PDA position account
+    #[index]
+    pub pda_position_account: Pubkey,
+
+    // Position account
+    pub position: Pubkey,
+    // Position liquidity
+    pub position_liquidity: u64,
+
+    /// Timestamp of the event
+    pub timestamp: i64
+}
+
+#[event]
+pub struct WithdrawEvent {
+    // Signer (user)
+    #[index]
+    pub signer: Pubkey,
+    // Created PDA lockbox position account
+    #[index]
+    pub pda_lockbox_position: Pubkey,
+    // Created PDA position account
+    #[index]
+    pub pda_position_account: Pubkey,
+
+    // Position account
+    pub position: Pubkey,
+    // User ATA token A
+    token_owner_account_a: Pubkey,
+    // User ATA token B
+    token_owner_account_b: Pubkey,
+    // Withdraw amount
+    pub amount: u64,
+    // Position liquidity remainder
+    pub remainder: u64,
+
+    /// Timestamp of the event
+    pub timestamp: i64
 }

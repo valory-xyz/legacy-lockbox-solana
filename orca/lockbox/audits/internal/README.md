@@ -52,11 +52,15 @@ https://docs.rs/cargo-audit/latest/cargo_audit/
 cargo install cargo-audit
 cargo-audit audit > audits/internal/analysis/cargo-audit.txt
 ```
+[x] Out of scope
+
 ##### cargo clippy 
 https://github.com/rust-lang/rust-clippy
 ```
 cargo clippy 2> audits/internal/analysis/cargo-clippy.txt
 ```
+[x] re-run the script as the structs have changed
+
 ##### cargo-geiger
 https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html
 https://github.com/geiger-rs/cargo-geiger?tab=readme-ov-file
@@ -65,6 +69,8 @@ cargo install --locked cargo-geiger
 cd lockbox/programs/liquidity_lockbox
 cargo-geiger > audits/internal/analysis/cargo-geiger.txt
 ```
+[x] "!" is out of scope
+
 ##### cargo-spellcheck
 https://github.com/drahnr/cargo-spellcheck
 ```
@@ -131,11 +137,13 @@ we need some other solution.
 Notes: PDA account can't be > 10k. ref: https://stackoverflow.com/questions/70150946/systemprogramcreateaccount-data-size-limited-to-10240-in-inner-instructions
 To discussion.
 Status at the time of audit: will be corrected in the next version.
+[x] Resolved all big accounts. Need to re-audit. Need to build an off-chain system that monitors sensitive position related accounts.
 
 4. Signed invocation of unverified programs <br>
 token_program is real token_program ?
 whirlpool_program is real whirlpool_program ?
 To discussion.
+[x] Fixed.
 
 
 5. Solana account confusions: the program fails to ensure that the account data has the type it expects to have. <br>
@@ -145,6 +153,7 @@ To discussion.
 
 6. Re-initiation with cross-instance confusion <br>
 Passed. Example: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/4-initialization/recommended/src/lib.rs
+[x] In place.
 
 7. Arithmetic overflow/underflows: If an arithmetic operation results in a higher or lower value, the value will wrap around with two’s complement. <br>
 Failed. Pay attention.
@@ -152,6 +161,8 @@ Failed. Pay attention.
 https://stackoverflow.com/questions/52646755/checking-for-integer-overflow-in-rust
 https://doc.rust-lang.org/std/primitive.u32.html#method.checked_add
 ```
+[x] Fixed.
+
 8. Numerical precision errors: numeric calculations on floating point can cause precision errors and those errors can accumulate. <br>
 N/A
 
@@ -168,15 +179,16 @@ N/A
 Passed.
 
 13. Missing freeze authority checks <br>
-To discussion.
+[x] Checked, all position authority is null.
 
 14. Insufficient SPL-Token account verification <br>
 bridged_token is SPL-token ?
-To discussion.
+[x] Checked, bridge token mint is the protocol token mint.
 
 #### General notes not specific to Solana/Rust. Critical
 ##### No event in `deposit`
 ##### No event in `withdraw`
+[x] Fixed.
 
 ### Notes:
 ####  Rare case with try_find_program_address => None
@@ -189,16 +201,19 @@ To discussion.
     maybe https://docs.rs/solana-program/latest/solana_program/pubkey/struct.Pubkey.html#method.find_program_address
 
 ```
+[x] Fixed.
 
 #### Documentation standard in Rust
 Discussion with examples: <br>
 https://community.starknet.io/t/revisiting-the-comment-standard-natspec-or-rust/98009/6 <br>
 https://doc.rust-lang.org/rust-by-example/meta/doc.html <br>
+[x] Discussed
 
 #### Negative tests. 
 1. re-initialize await program.methods.initialize()
 2. program.methods.deposit() with wrong/fake accounts
 3. program.methods.withdraw()  with wrong/fake accounts
+[x] Fixed.
 
 #### Fixed and removed all TODO
 

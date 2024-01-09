@@ -55,6 +55,11 @@ If the `@programId` in lib.rs does not match with the deployed one, update it an
 anchor build
 ```
 
+For debugging, after run local validator:
+```
+solana logs -v --url localhost 7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ
+```
+
 ## Acknowledgements
 The liquidity lockbox contracts were inspired and based on the following sources:
 - [Orca](https://github.com/orca-so/whirlpools);

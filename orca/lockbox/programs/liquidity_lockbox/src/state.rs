@@ -7,12 +7,16 @@ pub struct LiquidityLockbox {
   // Bridged token mint address
   pub bridged_token_mint: Pubkey,
   // Total liquidity in a lockbox
+  // Considering OLAS and SOL inflation, it will never practically be bigger than 2^64 - 1
   pub total_liquidity: u64,
-  // Total number of positions
+  // Total number of lockbox positions
+  // Even if position is created every second, it would take 136+ years to create 2^32 - 1 positions
   pub num_positions: u32
 }
 
 impl LiquidityLockbox {
+  pub const LEN: usize = 8 + 1 + 32 + 8 + 4;
+
   pub fn seeds(&self) -> [&[u8]; 2] {
     [
       &b"liquidity_lockbox"[..],
@@ -49,6 +53,8 @@ pub struct LockboxPosition {
 }
 
 impl LockboxPosition {
+  pub const LEN: usize = 8 + 4 + 1 + 32 + 32 + 8;
+
   pub fn seeds(&self) -> [&[u8]; 3] {
     [
       &b"lockbox_position"[..],
