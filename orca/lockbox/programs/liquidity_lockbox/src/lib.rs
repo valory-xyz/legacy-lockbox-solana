@@ -30,6 +30,10 @@ pub mod liquidity_lockbox {
   const ORCA: Pubkey = pubkey!("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");
   // OLAS-SOL Whirlpool address
   const WHIRLPOOL: Pubkey = pubkey!("5dMKUYJDsjZkAD3wiV3ViQkuq9pSmWQ5eAzcQLtDnUT3");
+  // SOL address
+  const SOL: Pubkey = pubkey!("So11111111111111111111111111111111111111112");
+  // OLAS address
+  const OLAS: Pubkey = pubkey!("Ez3nzG9ofodYCvEmw73XhQ87LWNYVRM2s7diB5tBZPyM");
   // Position account discriminator
   const POSITION_HEADER: [u8; 8] = [0xaa, 0xbc, 0x8f, 0xe4, 0x7a, 0x40, 0xf7, 0xd0];
   // Full range lower and upper indexes
@@ -96,8 +100,7 @@ pub mod liquidity_lockbox {
     }
 
     // Check the PDA ownership
-    let owner = ctx.accounts.position.to_account_info().owner;
-    if owner != &ORCA {
+    if ctx.accounts.position.to_account_info().owner != &ORCA {
       return Err(ErrorCode::WrongOwner.into());
     }
 
@@ -225,6 +228,22 @@ pub mod liquidity_lockbox {
     let lockbox_pda = Pubkey::find_program_address(&[b"liquidity_lockbox"], &PROGRAM_ID);
     if lockbox_pda.0 != ctx.accounts.lockbox.key() {
       return Err(ErrorCode::WrongLockboxPDA.into());
+    }
+
+    // Check that the first token is SOL
+    if ctx.accounts.token_owner_account_a.mint != SOL || ctx.accounts.token_vault_a.mint != SOL {
+      return Err(ErrorCode::WrongTokenMint.into());
+    }
+
+    // Check that the second token is OLAS
+    if ctx.accounts.token_owner_account_b.mint != OLAS || ctx.accounts.token_vault_b.mint != OLAS {
+      return Err(ErrorCode::WrongTokenMint.into());
+    }
+
+    // Check tick arrays owner
+    if ctx.accounts.tick_array_lower.to_account_info().owner != &ORCA ||
+      ctx.accounts.tick_array_upper.to_account_info().owner != &ORCA {
+      return Err(ErrorCode::WrongOwner.into());
     }
 
     // Get the position liquidity
@@ -431,12 +450,15 @@ pub struct DepositPositionForLiquidity<'info> {
 
   pub position: Box<Account<'info, Position>>,
   #[account(mut,
+    constraint = signer.key == &position_token_account.owner,
     constraint = position_token_account.mint == position.position_mint,
     constraint = position_token_account.amount == 1
   )]
   pub position_token_account: Box<Account<'info, TokenAccount>>,
 
-  #[account(address = position_token_account.mint)]
+  #[account(address = position_token_account.mint,
+    constraint = position_mint.supply == 1
+  )]
   pub position_mint: Account<'info, Mint>,
 
   #[account(init,
@@ -459,8 +481,8 @@ pub struct DepositPositionForLiquidity<'info> {
   pub bridged_token_mint: Box<Account<'info, Mint>>,
   #[account(mut,
     constraint = bridged_token_account.mint == lockbox.bridged_token_mint,
-    constraint = lockbox.bridged_token_mint == bridged_token_mint.key(),
-    constraint = bridged_token_account.owner == signer.key(),
+    constraint = bridged_token_mint.key() == lockbox.bridged_token_mint,
+    constraint = signer.key == &bridged_token_account.owner,
   )]
   pub bridged_token_account: Box<Account<'info, TokenAccount>>,
 
@@ -486,7 +508,7 @@ pub struct WithdrawLiquidityForTokens<'info> {
   #[account(mut,
     constraint = bridged_token_account.mint == lockbox.bridged_token_mint,
     constraint = lockbox.bridged_token_mint == bridged_token_mint.key(),
-    constraint = bridged_token_account.owner == signer.key(),
+    constraint = signer.key == &bridged_token_account.owner,
   )]
   pub bridged_token_account: Box<Account<'info, TokenAccount>>,
 
@@ -494,13 +516,14 @@ pub struct WithdrawLiquidityForTokens<'info> {
   pub position: Box<Account<'info, Position>>,
   #[account(mut,
     constraint = pda_position_account.mint == position.position_mint,
-    constraint = pda_position_account.amount == 1
+    constraint = pda_position_account.amount == 1,
+    constraint = lockbox.key() == pda_position_account.owner
   )]
   pub pda_position_account: Box<Account<'info, TokenAccount>>,
 
   #[account(mut,
     address = position.position_mint,
-    constraint = position.whirlpool == whirlpool.key()
+    constraint = position_mint.supply == 1
   )]
   pub position_mint: Box<Account<'info, Mint>>,
 
@@ -513,10 +536,14 @@ pub struct WithdrawLiquidityForTokens<'info> {
 
   #[account(mut,
     constraint = token_owner_account_a.mint == whirlpool.token_mint_a,
-    constraint = token_owner_account_a.mint != token_owner_account_b.mint
+    constraint = token_owner_account_a.mint != token_owner_account_b.mint,
+    constraint = signer.key == &token_owner_account_a.owner
   )]
   pub token_owner_account_a: Box<Account<'info, TokenAccount>>,
-  #[account(mut, constraint = token_owner_account_b.mint == whirlpool.token_mint_b)]
+  #[account(mut,
+    constraint = token_owner_account_b.mint == whirlpool.token_mint_b,
+    constraint = signer.key == &token_owner_account_b.owner
+  )]
   pub token_owner_account_b: Box<Account<'info, TokenAccount>>,
 
   #[account(mut,
@@ -572,7 +599,9 @@ pub enum ErrorCode {
   #[msg("Provided wrong PDA position ATA")]
   WrongPDAPositionAccount,
   #[msg("Provided wrong Orca program account")]
-  WrongOrcaAccount
+  WrongOrcaAccount,
+  #[msg("Wrong token mint")]
+  WrongTokenMint
 }
 
 

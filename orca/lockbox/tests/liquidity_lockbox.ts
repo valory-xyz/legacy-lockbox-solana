@@ -429,7 +429,6 @@ async function main() {
 //      .view();
 //    console.log("Bridged token total supply now:", totalSupply.toNumber());
 
-
     // ############################## WITHDRAW ##############################
     console.log("\nSending bridged tokens back to the program in exchange of the liquidity split in both tokens");
 
