@@ -47,6 +47,16 @@ pub mod liquidity_lockbox {
   pub fn initialize(
     ctx: Context<InitializeLiquidityLockbox>
   ) -> Result<()> {
+    // Check that the first token mint is SOL
+    if ctx.accounts.fee_collector_token_owner_account_a.mint != SOL {
+      return Err(ErrorCode::WrongTokenMint.into());
+    }
+
+    // Check that the second token mint is OLAS
+    if ctx.accounts.fee_collector_token_owner_account_b.mint != OLAS {
+      return Err(ErrorCode::WrongTokenMint.into());
+    }
+
     // Get the lockbox account
     let lockbox = &mut ctx.accounts.lockbox;
 
@@ -56,7 +66,9 @@ pub mod liquidity_lockbox {
     // Initialize lockbox account
     lockbox.initialize(
       bump,
-      ctx.accounts.bridged_token_mint.key()
+      ctx.accounts.bridged_token_mint.key(),
+      ctx.accounts.fee_collector_token_owner_account_a.key(),
+      ctx.accounts.fee_collector_token_owner_account_b.key()
     )?;
 
     Ok(())
@@ -243,12 +255,12 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::WrongLockboxPDA.into());
     }
 
-    // Check that the first token is SOL
+    // Check that the first token mint is SOL
     if ctx.accounts.token_owner_account_a.mint != SOL || ctx.accounts.token_vault_a.mint != SOL {
       return Err(ErrorCode::WrongTokenMint.into());
     }
 
-    // Check that the second token is OLAS
+    // Check that the second token mint is OLAS
     if ctx.accounts.token_owner_account_b.mint != OLAS || ctx.accounts.token_vault_b.mint != OLAS {
       return Err(ErrorCode::WrongTokenMint.into());
     }
@@ -323,8 +335,8 @@ pub mod liquidity_lockbox {
       position_authority: ctx.accounts.lockbox.to_account_info(),
       position: ctx.accounts.position.to_account_info(),
       position_token_account: ctx.accounts.pda_position_account.to_account_info(),
-      token_owner_account_a: ctx.accounts.token_owner_account_a.to_account_info(),
-      token_owner_account_b: ctx.accounts.token_owner_account_b.to_account_info(),
+      token_owner_account_a: ctx.accounts.fee_collector_token_owner_account_a.to_account_info(),
+      token_owner_account_b: ctx.accounts.fee_collector_token_owner_account_b.to_account_info(),
       token_vault_a: ctx.accounts.token_vault_a.to_account_info(),
       token_vault_b: ctx.accounts.token_vault_b.to_account_info(),
       token_program: ctx.accounts.token_program.to_account_info()
@@ -442,6 +454,11 @@ pub struct InitializeLiquidityLockbox<'info> {
   #[account(constraint = bridged_token_mint.mint_authority.unwrap() == lockbox.key())]
   pub bridged_token_mint: Box<Account<'info, Mint>>,
 
+  #[account(constraint = signer.key == &fee_collector_token_owner_account_a.owner)]
+  pub fee_collector_token_owner_account_a: Box<Account<'info, TokenAccount>>,
+  #[account(constraint = signer.key == &fee_collector_token_owner_account_b.owner)]
+  pub fee_collector_token_owner_account_b: Box<Account<'info, TokenAccount>>,
+
   #[account(address = token::ID)]
   pub token_program: Program<'info, Token>,
   pub system_program: Program<'info, System>,
@@ -551,6 +568,11 @@ pub struct WithdrawLiquidityForTokens<'info> {
     constraint = signer.key == &token_owner_account_b.owner
   )]
   pub token_owner_account_b: Box<Account<'info, TokenAccount>>,
+
+  #[account(mut, address = lockbox.fee_collector_token_owner_account_a)]
+  pub fee_collector_token_owner_account_a: Box<Account<'info, TokenAccount>>,
+  #[account(mut, address = lockbox.fee_collector_token_owner_account_b)]
+  pub fee_collector_token_owner_account_b: Box<Account<'info, TokenAccount>>,
 
   #[account(mut,
     constraint = token_vault_a.key() == whirlpool.token_vault_a,
