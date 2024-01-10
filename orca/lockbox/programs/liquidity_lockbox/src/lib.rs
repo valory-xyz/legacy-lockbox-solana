@@ -36,8 +36,6 @@ pub mod liquidity_lockbox {
   const OLAS: Pubkey = pubkey!("Ez3nzG9ofodYCvEmw73XhQ87LWNYVRM2s7diB5tBZPyM");
   // Position account discriminator
   const POSITION_HEADER: [u8; 8] = [0xaa, 0xbc, 0x8f, 0xe4, 0x7a, 0x40, 0xf7, 0xd0];
-  // Minimum liquidity amount for operations
-  const MIN_LIQUIDITY_AMOUNT: u64 = 100_000_000;
   // Full range lower and upper indexes
   const TICK_LOWER_INDEX: i32 = -443584;
   const TICK_UPPER_INDEX: i32 = 443584;
@@ -100,8 +98,8 @@ pub mod liquidity_lockbox {
     let position_liquidity = liquidity as u64;
 
     // Check for the minimum liquidity in position
-    if position_liquidity < MIN_LIQUIDITY_AMOUNT {
-      return Err(ErrorCode::LiquidityTooLow.into());
+    if position_liquidity == 0 {
+      return Err(ErrorCode::LiquidityZero.into());
     }
 
     // Check tick values
@@ -265,8 +263,8 @@ pub mod liquidity_lockbox {
     let position_liquidity = ctx.accounts.pda_lockbox_position.position_liquidity;
 
     // Check that the liquidity is not zero - must never happen if the total liquidity is not zero
-    if position_liquidity < MIN_LIQUIDITY_AMOUNT {
-      return Err(ErrorCode::LiquidityTooLow.into());
+    if position_liquidity == 0 {
+      return Err(ErrorCode::LiquidityZero.into());
     }
 
     // Check the requested amount to be smaller or equal than the position liquidity
@@ -276,11 +274,6 @@ pub mod liquidity_lockbox {
 
     // Get the post-withdraw token remainder
     let remainder: u64 = position_liquidity - amount;
-    // One needs to withdraw the full position on not try to lower the position remainder below the negligible level
-    // If the remainder is too low, select another lockbox position
-    if remainder > 0 && remainder < MIN_LIQUIDITY_AMOUNT {
-      return Err(ErrorCode::RemainderTooLow.into());
-    }
 
     // Burn provided amount of bridged tokens
     invoke_signed(
@@ -591,10 +584,8 @@ pub enum ErrorCode {
   WrongPositionHeader,
   #[msg("Wrong position ID")]
   WrongPositionId,
-  #[msg("Liquidity is too low")]
-  LiquidityTooLow,
-  #[msg("Remainder is too low")]
-  RemainderTooLow,
+  #[msg("Liquidity is zero")]
+  LiquidityZero,
   #[msg("Total liquidity is zero")]
   TotalLiquidityZero,
   #[msg("Requested amount exceeds a position liquidity")]
