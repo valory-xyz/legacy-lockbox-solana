@@ -272,9 +272,6 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::AmountExceedsPositionLiquidity.into());
     }
 
-    // Get the post-withdraw token remainder
-    let remainder: u64 = position_liquidity - amount;
-
     // Burn provided amount of bridged tokens
     invoke_signed(
       &burn_checked(
@@ -363,6 +360,9 @@ pub mod liquidity_lockbox {
       signer_seeds
     );
     whirlpool::cpi::decrease_liquidity(cpi_ctx_modify_liquidity, amount as u128, token_min_a, token_min_b)?;
+
+    // Get the post-withdraw token remainder
+    let remainder: u64 = position_liquidity - amount;
 
     // If requested amount can be fully covered by the current position liquidity, close the position
     if remainder == 0 {
