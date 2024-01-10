@@ -36,6 +36,8 @@ pub mod liquidity_lockbox {
   const OLAS: Pubkey = pubkey!("Ez3nzG9ofodYCvEmw73XhQ87LWNYVRM2s7diB5tBZPyM");
   // Position account discriminator
   const POSITION_HEADER: [u8; 8] = [0xaa, 0xbc, 0x8f, 0xe4, 0x7a, 0x40, 0xf7, 0xd0];
+  // Minimum liquidity amount for operations
+  const MIN_LIQUIDITY_AMOUNT: u64 = 100_000_000;
   // Full range lower and upper indexes
   const TICK_LOWER_INDEX: i32 = -443584;
   const TICK_UPPER_INDEX: i32 = 443584;
@@ -63,6 +65,9 @@ pub mod liquidity_lockbox {
   }
 
   /// Deposits an NFT position under the Lockbox management and gets bridged tokens minted in return.
+  ///
+  /// ### Parameters
+  /// - `id` - Lockbox position ID. Must be equal to the current total number of lockbox positions.
   pub fn deposit(ctx: Context<DepositPositionForLiquidity>, id: u32) -> Result<()> {
     let whirlpool = ctx.accounts.position.whirlpool;
     let position_mint = ctx.accounts.position.position_mint;
@@ -87,13 +92,16 @@ pub mod liquidity_lockbox {
         return Err(ErrorCode::WrongPositionHeader.into());
     }
 
-    // Check for the zero liquidity in position
-    if liquidity == 0 {
-      return Err(ErrorCode::LiquidityZero.into());
-    }
     // Check that the liquidity is within uint64 bounds
     if liquidity > std::u64::MAX as u128 {
       return Err(ErrorCode::LiquidityOverflow.into());
+    }
+
+    let position_liquidity = liquidity as u64;
+
+    // Check for the minimum liquidity in position
+    if position_liquidity < MIN_LIQUIDITY_AMOUNT {
+      return Err(ErrorCode::LiquidityTooLow.into());
     }
 
     // Check tick values
@@ -118,14 +126,12 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::WrongLockboxPDA.into());
     }
 
-    // Check the id that has to match the number of positions in order to create a correct account
+    // Check the id that has to match the number of lockbox positions in order to create a correct account
     // The position needs to be provided as an argument since it's passed into the instruction field
     let num_positions = ctx.accounts.lockbox.num_positions;
     if num_positions != id {
       return Err(ErrorCode::WrongPositionId.into());
     }
-
-    let position_liquidity = liquidity as u64;
 
     // Transfer position to the program PDA ATA
     token::transfer(
@@ -205,10 +211,16 @@ pub mod liquidity_lockbox {
   /// Withdraws a specified amount of liquidity for supplied bridged tokens.
   ///
   /// ### Parameters
+  /// - `id` - Lockbox position ID. Must be smaller than the total number of lockbox positions.
   /// - `amount` - Amount of bridged tokens corresponding to the position liquidity part to withdraw.
+  /// - `token_min_a` - The minimum amount of tokenA the user is willing to withdraw.
+  /// - `token_min_b` - The minimum amount of tokenB the user is willing to withdraw.
   pub fn withdraw(
     ctx: Context<WithdrawLiquidityForTokens>,
+    id: u32,
     amount: u64,
+    token_min_a: u64,
+    token_min_b: u64
   ) -> Result<()> {
     // Check if there is any liquidity left in the Lockbox
     if ctx.accounts.lockbox.total_liquidity == 0 {
@@ -217,7 +229,9 @@ pub mod liquidity_lockbox {
 
     // TODO: any other way to get PROGRAM_ID?
     // Get the lockbox position PDA ATA
-    let id = ctx.accounts.lockbox.num_positions - 1;
+    if id >= ctx.accounts.lockbox.num_positions {
+      return Err(ErrorCode::WrongPositionId.into());
+    }
     let lockbox_position = Pubkey::find_program_address(&[b"lockbox_position", id.to_be_bytes().as_ref()], &PROGRAM_ID);
 
     // Check that the calculated address matches the provided PDA lockbox position
@@ -251,13 +265,21 @@ pub mod liquidity_lockbox {
     let position_liquidity = ctx.accounts.pda_lockbox_position.position_liquidity;
 
     // Check that the liquidity is not zero - must never happen if the total liquidity is not zero
-    if position_liquidity == 0 {
-      return Err(ErrorCode::LiquidityZero.into());
+    if position_liquidity < MIN_LIQUIDITY_AMOUNT {
+      return Err(ErrorCode::LiquidityTooLow.into());
     }
 
     // Check the requested amount to be smaller or equal than the position liquidity
     if amount > position_liquidity {
       return Err(ErrorCode::AmountExceedsPositionLiquidity.into());
+    }
+
+    // Get the post-withdraw token remainder
+    let remainder: u64 = position_liquidity - amount;
+    // One needs to withdraw the full position on not try to lower the position remainder below the negligible level
+    // If the remainder is too low, select another lockbox position
+    if remainder > 0 && remainder < MIN_LIQUIDITY_AMOUNT {
+      return Err(ErrorCode::RemainderTooLow.into());
     }
 
     // Burn provided amount of bridged tokens
@@ -347,10 +369,7 @@ pub mod liquidity_lockbox {
       cpi_accounts_modify_liquidity,
       signer_seeds
     );
-    whirlpool::cpi::decrease_liquidity(cpi_ctx_modify_liquidity, amount as u128, 0, 0)?;
-
-    // Update the token remainder
-    let remainder: u64 = position_liquidity - amount;
+    whirlpool::cpi::decrease_liquidity(cpi_ctx_modify_liquidity, amount as u128, token_min_a, token_min_b)?;
 
     // If requested amount can be fully covered by the current position liquidity, close the position
     if remainder == 0 {
@@ -390,12 +409,6 @@ pub mod liquidity_lockbox {
       let dst: &mut [u8] = &mut data;
       let mut cursor = Cursor::new(dst);
       cursor.write_all(&CLOSED_ACCOUNT_DISCRIMINATOR).unwrap();
-    }
-
-    // Check the position remainder
-    if remainder == 0 {
-      // Decrease lockbox position counter
-      ctx.accounts.lockbox.num_positions -= 1;
     } else {
       // Update position liquidity
       ctx.accounts.pda_lockbox_position.position_liquidity = remainder;
@@ -578,8 +591,10 @@ pub enum ErrorCode {
   WrongPositionHeader,
   #[msg("Wrong position ID")]
   WrongPositionId,
-  #[msg("Liquidity is zero")]
-  LiquidityZero,
+  #[msg("Liquidity is too low")]
+  LiquidityTooLow,
+  #[msg("Remainder is too low")]
+  RemainderTooLow,
   #[msg("Total liquidity is zero")]
   TotalLiquidityZero,
   #[msg("Requested amount exceeds a position liquidity")]

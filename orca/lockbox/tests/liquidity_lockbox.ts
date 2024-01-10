@@ -432,10 +432,11 @@ async function main() {
     // ############################## WITHDRAW ##############################
     console.log("\nSending bridged tokens back to the program in exchange of the liquidity split in both tokens");
 
+    const zeroAmount = new anchor.BN("0");
     const bigBalance = new anchor.BN("4000000000");
     // Try to get amounts and positions for a bigger provided liquidity amount than the total liquidity
     try {
-        signature = await program.methods.withdraw(bigBalance)
+        signature = await program.methods.withdraw(numPosition, bigBalance, zeroAmount, zeroAmount)
           .accounts(
               {
                 lockbox: pdaProgram,
@@ -465,7 +466,7 @@ async function main() {
 
     // Try to execute the withdraw with the incorrect position address
     try {
-        signature = await program.methods.withdraw(tBalalnce)
+        signature = await program.methods.withdraw(numPosition, tBalalnce, zeroAmount, zeroAmount)
           .accounts(
               {
                 lockbox: pdaProgram,
@@ -506,7 +507,7 @@ async function main() {
     // Execute the correct withdraw tx
     console.log("Amount of bridged tokens to withdraw:", tBalalnce.toString());
     try {
-        signature = await program.methods.withdraw(tBalalnce)
+        signature = await program.methods.withdraw(numPosition, tBalalnce, zeroAmount, zeroAmount)
           .accounts(
               {
                 lockbox: pdaProgram,
