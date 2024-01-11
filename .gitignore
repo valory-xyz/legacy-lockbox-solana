@@ -1,2 +1,6 @@
 .idea
 .anchor
+node_modules
+target
+!target/deploy/liquidity_lockbox-keypair.json
+test-ledger
