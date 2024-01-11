@@ -1,0 +1,17 @@
+[features]
+seeds = true
+[programs.localnet]
+liquidity_lockbox = "7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "localnet"
+wallet = "artifacts/id.json"
+
+[profile.release]
+overflow-checks = true
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
