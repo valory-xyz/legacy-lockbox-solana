@@ -237,6 +237,11 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::TotalLiquidityZero.into());
     }
 
+    // Check the token amount
+    if amount == 0 {
+      return Err(ErrorCode::LiquidityZero.into());
+    }
+
     // TODO: any other way to get PROGRAM_ID?
     // Get the lockbox position PDA ATA
     if id >= ctx.accounts.lockbox.num_positions {
