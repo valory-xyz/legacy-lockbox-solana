@@ -47,6 +47,16 @@ pub mod liquidity_lockbox {
   pub fn initialize(
     ctx: Context<InitializeLiquidityLockbox>
   ) -> Result<()> {
+    // Check that the first token mint is SOL
+    if ctx.accounts.fee_collector_token_owner_account_a.mint != SOL {
+      return Err(ErrorCode::WrongTokenMint.into());
+    }
+
+    // Check that the second token mint is OLAS
+    if ctx.accounts.fee_collector_token_owner_account_b.mint != OLAS {
+      return Err(ErrorCode::WrongTokenMint.into());
+    }
+
     // Get the lockbox account
     let lockbox = &mut ctx.accounts.lockbox;
 
@@ -56,13 +66,18 @@ pub mod liquidity_lockbox {
     // Initialize lockbox account
     lockbox.initialize(
       bump,
-      ctx.accounts.bridged_token_mint.key()
+      ctx.accounts.bridged_token_mint.key(),
+      ctx.accounts.fee_collector_token_owner_account_a.key(),
+      ctx.accounts.fee_collector_token_owner_account_b.key()
     )?;
 
     Ok(())
   }
 
   /// Deposits an NFT position under the Lockbox management and gets bridged tokens minted in return.
+  ///
+  /// ### Parameters
+  /// - `id` - Lockbox position ID. Must be equal to the current total number of lockbox positions.
   pub fn deposit(ctx: Context<DepositPositionForLiquidity>, id: u32) -> Result<()> {
     let whirlpool = ctx.accounts.position.whirlpool;
     let position_mint = ctx.accounts.position.position_mint;
@@ -87,13 +102,16 @@ pub mod liquidity_lockbox {
         return Err(ErrorCode::WrongPositionHeader.into());
     }
 
-    // Check for the zero liquidity in position
-    if liquidity == 0 {
-      return Err(ErrorCode::LiquidityZero.into());
-    }
     // Check that the liquidity is within uint64 bounds
     if liquidity > std::u64::MAX as u128 {
       return Err(ErrorCode::LiquidityOverflow.into());
+    }
+
+    let position_liquidity = liquidity as u64;
+
+    // Check for the minimum liquidity in position
+    if position_liquidity == 0 {
+      return Err(ErrorCode::LiquidityZero.into());
     }
 
     // Check tick values
@@ -118,14 +136,12 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::WrongLockboxPDA.into());
     }
 
-    // Check the id that has to match the number of positions in order to create a correct account
+    // Check the id that has to match the number of lockbox positions in order to create a correct account
     // The position needs to be provided as an argument since it's passed into the instruction field
     let num_positions = ctx.accounts.lockbox.num_positions;
     if num_positions != id {
       return Err(ErrorCode::WrongPositionId.into());
     }
-
-    let position_liquidity = liquidity as u64;
 
     // Transfer position to the program PDA ATA
     token::transfer(
@@ -205,10 +221,16 @@ pub mod liquidity_lockbox {
   /// Withdraws a specified amount of liquidity for supplied bridged tokens.
   ///
   /// ### Parameters
+  /// - `id` - Lockbox position ID. Must be smaller than the total number of lockbox positions.
   /// - `amount` - Amount of bridged tokens corresponding to the position liquidity part to withdraw.
+  /// - `token_min_a` - The minimum amount of tokenA the user is willing to withdraw.
+  /// - `token_min_b` - The minimum amount of tokenB the user is willing to withdraw.
   pub fn withdraw(
     ctx: Context<WithdrawLiquidityForTokens>,
+    id: u32,
     amount: u64,
+    token_min_a: u64,
+    token_min_b: u64
   ) -> Result<()> {
     // Check if there is any liquidity left in the Lockbox
     if ctx.accounts.lockbox.total_liquidity == 0 {
@@ -217,7 +239,9 @@ pub mod liquidity_lockbox {
 
     // TODO: any other way to get PROGRAM_ID?
     // Get the lockbox position PDA ATA
-    let id = ctx.accounts.lockbox.num_positions - 1;
+    if id >= ctx.accounts.lockbox.num_positions {
+      return Err(ErrorCode::WrongPositionId.into());
+    }
     let lockbox_position = Pubkey::find_program_address(&[b"lockbox_position", id.to_be_bytes().as_ref()], &PROGRAM_ID);
 
     // Check that the calculated address matches the provided PDA lockbox position
@@ -231,12 +255,12 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::WrongLockboxPDA.into());
     }
 
-    // Check that the first token is SOL
+    // Check that the first token mint is SOL
     if ctx.accounts.token_owner_account_a.mint != SOL || ctx.accounts.token_vault_a.mint != SOL {
       return Err(ErrorCode::WrongTokenMint.into());
     }
 
-    // Check that the second token is OLAS
+    // Check that the second token mint is OLAS
     if ctx.accounts.token_owner_account_b.mint != OLAS || ctx.accounts.token_vault_b.mint != OLAS {
       return Err(ErrorCode::WrongTokenMint.into());
     }
@@ -311,8 +335,8 @@ pub mod liquidity_lockbox {
       position_authority: ctx.accounts.lockbox.to_account_info(),
       position: ctx.accounts.position.to_account_info(),
       position_token_account: ctx.accounts.pda_position_account.to_account_info(),
-      token_owner_account_a: ctx.accounts.token_owner_account_a.to_account_info(),
-      token_owner_account_b: ctx.accounts.token_owner_account_b.to_account_info(),
+      token_owner_account_a: ctx.accounts.fee_collector_token_owner_account_a.to_account_info(),
+      token_owner_account_b: ctx.accounts.fee_collector_token_owner_account_b.to_account_info(),
       token_vault_a: ctx.accounts.token_vault_a.to_account_info(),
       token_vault_b: ctx.accounts.token_vault_b.to_account_info(),
       token_program: ctx.accounts.token_program.to_account_info()
@@ -347,9 +371,9 @@ pub mod liquidity_lockbox {
       cpi_accounts_modify_liquidity,
       signer_seeds
     );
-    whirlpool::cpi::decrease_liquidity(cpi_ctx_modify_liquidity, amount as u128, 0, 0)?;
+    whirlpool::cpi::decrease_liquidity(cpi_ctx_modify_liquidity, amount as u128, token_min_a, token_min_b)?;
 
-    // Update the token remainder
+    // Get the post-withdraw token remainder
     let remainder: u64 = position_liquidity - amount;
 
     // If requested amount can be fully covered by the current position liquidity, close the position
@@ -390,12 +414,6 @@ pub mod liquidity_lockbox {
       let dst: &mut [u8] = &mut data;
       let mut cursor = Cursor::new(dst);
       cursor.write_all(&CLOSED_ACCOUNT_DISCRIMINATOR).unwrap();
-    }
-
-    // Check the position remainder
-    if remainder == 0 {
-      // Decrease lockbox position counter
-      ctx.accounts.lockbox.num_positions -= 1;
     } else {
       // Update position liquidity
       ctx.accounts.pda_lockbox_position.position_liquidity = remainder;
@@ -435,6 +453,11 @@ pub struct InitializeLiquidityLockbox<'info> {
 
   #[account(constraint = bridged_token_mint.mint_authority.unwrap() == lockbox.key())]
   pub bridged_token_mint: Box<Account<'info, Mint>>,
+
+  #[account(constraint = signer.key == &fee_collector_token_owner_account_a.owner)]
+  pub fee_collector_token_owner_account_a: Box<Account<'info, TokenAccount>>,
+  #[account(constraint = signer.key == &fee_collector_token_owner_account_b.owner)]
+  pub fee_collector_token_owner_account_b: Box<Account<'info, TokenAccount>>,
 
   #[account(address = token::ID)]
   pub token_program: Program<'info, Token>,
@@ -545,6 +568,11 @@ pub struct WithdrawLiquidityForTokens<'info> {
     constraint = signer.key == &token_owner_account_b.owner
   )]
   pub token_owner_account_b: Box<Account<'info, TokenAccount>>,
+
+  #[account(mut, address = lockbox.fee_collector_token_owner_account_a)]
+  pub fee_collector_token_owner_account_a: Box<Account<'info, TokenAccount>>,
+  #[account(mut, address = lockbox.fee_collector_token_owner_account_b)]
+  pub fee_collector_token_owner_account_b: Box<Account<'info, TokenAccount>>,
 
   #[account(mut,
     constraint = token_vault_a.key() == whirlpool.token_vault_a,

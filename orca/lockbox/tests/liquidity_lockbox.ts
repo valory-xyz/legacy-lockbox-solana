@@ -14,6 +14,7 @@ import {
 import { DecimalUtil, Percentage } from "@orca-so/common-sdk";
 import Decimal from "decimal.js";
 import expect from "expect";
+import fs from "fs";
 
 // UNIX/Linux/Mac
 // bash$ export ANCHOR_PROVIDER_URL=http://127.0.0.1:8899
@@ -121,11 +122,34 @@ async function main() {
     let accountInfo = await provider.connection.getAccountInfo(bridgedTokenMint);
     //console.log(accountInfo);
 
+    // Get the tokenA ATA of the program dedicated address for fee collection, and if it does not exist, create it
+    const feeCollectorTokenOwnerAccountA = await getOrCreateAssociatedTokenAccount(
+        provider.connection,
+        userWallet,
+        token_a.mint,
+        userWallet.publicKey
+    );
+    console.log("Fee collector ATA for tokenA:", feeCollectorTokenOwnerAccountA.address.toBase58());
+
+    const feeCollectorTokenOwnerAccountB = await getOrCreateAssociatedTokenAccount(
+        provider.connection,
+        userWallet,
+        token_b.mint,
+        userWallet.publicKey
+    );
+    console.log("Fee collector ATA for tokenB:", feeCollectorTokenOwnerAccountB.address.toBase58());
+
     // Initialize the LiquidityLockbox state
     try {
         signature = await program.methods
           .initialize()
-          .accounts({ bridgedTokenMint: bridgedTokenMint })
+          .accounts(
+            {
+              bridgedTokenMint: bridgedTokenMint,
+              feeCollectorTokenOwnerAccountA: feeCollectorTokenOwnerAccountA.address,
+              feeCollectorTokenOwnerAccountB: feeCollectorTokenOwnerAccountB.address,
+            }
+          )
           .rpc();
     } catch (error) {
         if (error instanceof Error && "message" in error) {
@@ -146,7 +170,13 @@ async function main() {
     try {
         signature = await program.methods
           .initialize()
-          .accounts({ bridgedTokenMint: bridgedTokenMint })
+          .accounts(
+            {
+              bridgedTokenMint: bridgedTokenMint,
+              feeCollectorTokenOwnerAccountA: feeCollectorTokenOwnerAccountA.address,
+              feeCollectorTokenOwnerAccountB: feeCollectorTokenOwnerAccountB.address,
+            }
+          )
           .rpc();
     } catch (error) {}
 
@@ -200,7 +230,6 @@ async function main() {
     console.log("PDA ATA", pdaPositionAccount.toBase58());
 
     // Get the tokenA ATA of the userWallet address, and if it does not exist, create it
-    // This account will have bridged tokens
     const tokenOwnerAccountA = await getOrCreateAssociatedTokenAccount(
         provider.connection,
         userWallet,
@@ -210,7 +239,6 @@ async function main() {
     console.log("User ATA for tokenA:", tokenOwnerAccountA.address.toBase58());
 
     // Get the tokenA ATA of the userWallet address, and if it does not exist, create it
-    // This account will have bridged tokens
     const tokenOwnerAccountB = await getOrCreateAssociatedTokenAccount(
         provider.connection,
         userWallet,
@@ -432,10 +460,11 @@ async function main() {
     // ############################## WITHDRAW ##############################
     console.log("\nSending bridged tokens back to the program in exchange of the liquidity split in both tokens");
 
+    const zeroAmount = new anchor.BN("0");
     const bigBalance = new anchor.BN("4000000000");
     // Try to get amounts and positions for a bigger provided liquidity amount than the total liquidity
     try {
-        signature = await program.methods.withdraw(bigBalance)
+        signature = await program.methods.withdraw(numPosition, bigBalance, zeroAmount, zeroAmount)
           .accounts(
               {
                 lockbox: pdaProgram,
@@ -450,6 +479,8 @@ async function main() {
                 pdaPositionAccount: pdaPositionAccount,
                 tokenOwnerAccountA: tokenOwnerAccountA.address,
                 tokenOwnerAccountB: tokenOwnerAccountB.address,
+                feeCollectorTokenOwnerAccountA: feeCollectorTokenOwnerAccountA.address,
+                feeCollectorTokenOwnerAccountB: feeCollectorTokenOwnerAccountB.address,
                 tokenVaultA: tokenVaultA,
                 tokenVaultB: tokenVaultB,
                 tickArrayLower: tickArrayLower,
@@ -465,7 +496,7 @@ async function main() {
 
     // Try to execute the withdraw with the incorrect position address
     try {
-        signature = await program.methods.withdraw(tBalalnce)
+        signature = await program.methods.withdraw(numPosition, tBalalnce, zeroAmount, zeroAmount)
           .accounts(
               {
                 lockbox: pdaProgram,
@@ -480,6 +511,8 @@ async function main() {
                 pdaPositionAccount: pdaPositionAccount,
                 tokenOwnerAccountA: tokenOwnerAccountA.address,
                 tokenOwnerAccountB: tokenOwnerAccountB.address,
+                feeCollectorTokenOwnerAccountA: feeCollectorTokenOwnerAccountA.address,
+                feeCollectorTokenOwnerAccountB: feeCollectorTokenOwnerAccountB.address,
                 tokenVaultA: tokenVaultA,
                 tokenVaultB: tokenVaultB,
                 tickArrayLower: tickArrayLower,
@@ -506,7 +539,7 @@ async function main() {
     // Execute the correct withdraw tx
     console.log("Amount of bridged tokens to withdraw:", tBalalnce.toString());
     try {
-        signature = await program.methods.withdraw(tBalalnce)
+        signature = await program.methods.withdraw(numPosition, tBalalnce, zeroAmount, zeroAmount)
           .accounts(
               {
                 lockbox: pdaProgram,
@@ -521,6 +554,8 @@ async function main() {
                 pdaPositionAccount: pdaPositionAccount,
                 tokenOwnerAccountA: tokenOwnerAccountA.address,
                 tokenOwnerAccountB: tokenOwnerAccountB.address,
+                feeCollectorTokenOwnerAccountA: feeCollectorTokenOwnerAccountA.address,
+                feeCollectorTokenOwnerAccountB: feeCollectorTokenOwnerAccountB.address,
                 tokenVaultA: tokenVaultA,
                 tokenVaultB: tokenVaultB,
                 tickArrayLower: tickArrayLower,
