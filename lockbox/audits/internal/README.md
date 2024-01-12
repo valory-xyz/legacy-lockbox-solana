@@ -278,3 +278,22 @@ https://github.com/coral-xyz/sealevel-attacks/tree/master/programs/6-duplicate-m
 ##### Missing ownership checks (e.g., by checking  AccountInfo::owner)
 [x] Fixed.
 
+## Re-audit 12.01.24
+The review has been performed based on the contract code in the following repository:<br>
+`https://github.com/valory-xyz/lockbox-solana` <br>
+commit: `44bab206d095739a1f4b49ca6fccbe3ca277066d` or `v0.1.2-pre-internal-audit`<br> 
+
+## Security issues.
+### Problems found instrumentally
+##### cargo clippy 
+https://github.com/rust-lang/rust-clippy
+```
+cargo clippy 2> audits/internal/analysis/cargo-clippy-3.txt
+```
+re-run.
+[cargo-clippy-3.txt](https://github.com/valory-xyz/lockbox-solana//blob/main/lockbox/audits/internal/analysis/cargo-clippy-3.txt) <br>
+- no new vulnerabilities were introduced since the previous fix
+
+##### Sec3 x-ray scanner
+- No issue, see [here](https://github.com/valory-xyz/lockbox-solana//blob/main/lockbox/audits/internal/analysis/sec3-report-12-01-24.PNG)
+
