@@ -1,0 +1,92 @@
+warning: redundant field names in struct initialization
+   --> programs/liquidity_lockbox/src/lib.rs:197:7
+    |
+197 |       position_liquidity: position_liquidity,
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `position_liquidity`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names
+    = note: `#[warn(clippy::redundant_field_names)]` on by default
+
+warning: redundant field names in struct initialization
+   --> programs/liquidity_lockbox/src/lib.rs:413:7
+    |
+413 |       amount: amount,
+    |       ^^^^^^^^^^^^^^ help: replace it with: `amount`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names
+
+warning: redundant field names in struct initialization
+   --> programs/liquidity_lockbox/src/lib.rs:414:7
+    |
+414 |       remainder: remainder,
+    |       ^^^^^^^^^^^^^^^^^^^^ help: replace it with: `remainder`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names
+
+warning: the `Err`-variant returned from this function is very large
+  --> programs/liquidity_lockbox/src/state.rs:31:8
+   |
+31 |   ) -> Result<()> {
+   |        ^^^^^^^^^^ the `Err`-variant is at least 160 bytes
+   |
+   = help: try reducing the size of `anchor_lang::error::Error`, for example by boxing large elements or replacing it with `Box<anchor_lang::error::Error>`
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+   = note: `#[warn(clippy::result_large_err)]` on by default
+
+warning: the `Err`-variant returned from this function is very large
+  --> programs/liquidity_lockbox/src/state.rs:73:8
+   |
+73 |   ) -> Result<()> {
+   |        ^^^^^^^^^^ the `Err`-variant is at least 160 bytes
+   |
+   = help: try reducing the size of `anchor_lang::error::Error`, for example by boxing large elements or replacing it with `Box<anchor_lang::error::Error>`
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+warning: the `Err`-variant returned from this function is very large
+  --> programs/liquidity_lockbox/src/lib.rs:49:8
+   |
+49 |   ) -> Result<()> {
+   |        ^^^^^^^^^^ the `Err`-variant is at least 160 bytes
+   |
+   = help: try reducing the size of `anchor_lang::error::Error`, for example by boxing large elements or replacing it with `Box<anchor_lang::error::Error>`
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+warning: question mark operator is useless here
+  --> programs/liquidity_lockbox/src/lib.rs:57:5
+   |
+57 | /     Ok(lockbox.initialize(
+58 | |       bump,
+59 | |       ctx.accounts.bridged_token_mint.key()
+60 | |     )?)
+   | |_______^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#needless_question_mark
+   = note: `#[warn(clippy::needless_question_mark)]` on by default
+help: try removing question mark and `Ok()`
+   |
+57 ~     lockbox.initialize(
+58 +       bump,
+59 +       ctx.accounts.bridged_token_mint.key()
+60 +     )
+   |
+
+warning: the `Err`-variant returned from this function is very large
+  --> programs/liquidity_lockbox/src/lib.rs:64:73
+   |
+64 |   pub fn deposit(ctx: Context<DepositPositionForLiquidity>, id: u32) -> Result<()> {
+   |                                                                         ^^^^^^^^^^ the `Err`-variant is at least 160 bytes
+   |
+   = help: try reducing the size of `anchor_lang::error::Error`, for example by boxing large elements or replacing it with `Box<anchor_lang::error::Error>`
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+warning: the `Err`-variant returned from this function is very large
+   --> programs/liquidity_lockbox/src/lib.rs:211:8
+    |
+211 |   ) -> Result<()> {
+    |        ^^^^^^^^^^ the `Err`-variant is at least 160 bytes
+    |
+    = help: try reducing the size of `anchor_lang::error::Error`, for example by boxing large elements or replacing it with `Box<anchor_lang::error::Error>`
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+warning: `liquidity_lockbox` (lib) generated 9 warnings (run `cargo clippy --fix --lib -p liquidity_lockbox` to apply 4 suggestions)
+    Finished dev [unoptimized + debuginfo] target(s) in 1m 26s
