@@ -121,7 +121,8 @@ pub mod liquidity_lockbox {
   /// Deposits an NFT position under the Lockbox management and gets bridged tokens minted in return.
   ///
   /// ### Parameters
-  /// - `liquidity_amount` - Requested liquidity amount.
+  /// - `token_max_a` - Max amount of SOL token to be added for liquidity.
+  /// - `token_max_b` - Max amount of OLAS token to be added for liquidity.
   pub fn deposit(ctx: Context<DepositPositionForLiquidity>,
     token_max_a: u64,
     token_max_b: u64,
@@ -241,7 +242,7 @@ pub mod liquidity_lockbox {
       delta_b,
     )?;
 
-    // Get program signer seeds
+    // Get lockbox signer seeds
     let signer_seeds = &[&ctx.accounts.lockbox.seeds()[..]];
 
     // CPI call to increase liquidity
@@ -301,9 +302,9 @@ pub mod liquidity_lockbox {
   /// Withdraws a specified amount of liquidity for supplied bridged tokens.
   ///
   /// ### Parameters
-  /// - `amount` - Amount of bridged tokens corresponding to the position liquidity part to withdraw.
-  /// - `token_min_a` - The minimum amount of tokenA the user is willing to withdraw.
-  /// - `token_min_b` - The minimum amount of tokenB the user is willing to withdraw.
+  /// - `amount` - Amount of bridged tokens corresponding to the position liquidity amount to withdraw.
+  /// - `token_min_a` - The minimum amount of SOL the signer is willing to withdraw.
+  /// - `token_min_b` - The minimum amount of OLAS the signer is willing to withdraw.
   pub fn withdraw(
     ctx: Context<WithdrawLiquidityForTokens>,
     amount: u64,
@@ -454,9 +455,14 @@ pub mod liquidity_lockbox {
   }
 }
 
-// https://github.com/orca-so/whirlpools/blob/main/sdk/src/quotes/public/increase-liquidity-quote.ts#L167
-// getLiquidityFromTokenA
+// https://github.com/orca-so/whirlpools/blob/main/sdk/src/quotes/public/increase-liquidity-quote.ts#L147
 // https://github.com/orca-so/whirlpools/blob/537306c096bcbbf9cb8d5cff337c989dcdd999b4/sdk/src/utils/position-util.ts#L69
+/// Gets liquidity from token A parameters.
+///
+/// ### Parameters
+/// - `amount` - Token A amount.
+/// - `sqrt_price_lower_x64` - Lower sqrt price.
+/// - `sqrt_price_upper_x64` - Upper sqrt price.
 fn get_liquidity_from_token_a(amount: u128, sqrt_price_lower_x64: u128, sqrt_price_upper_x64: u128 ) -> Result<u128> {
   // Δa = liquidity/sqrt_price_lower - liquidity/sqrt_price_upper
   // liquidity = Δa * ((sqrt_price_lower * sqrt_price_upper) / (sqrt_price_upper - sqrt_price_lower))

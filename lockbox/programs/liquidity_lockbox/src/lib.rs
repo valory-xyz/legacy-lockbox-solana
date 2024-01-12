@@ -223,8 +223,8 @@ pub mod liquidity_lockbox {
   /// ### Parameters
   /// - `id` - Lockbox position ID. Must be smaller than the total number of lockbox positions.
   /// - `amount` - Amount of bridged tokens corresponding to the position liquidity part to withdraw.
-  /// - `token_min_a` - The minimum amount of tokenA the user is willing to withdraw.
-  /// - `token_min_b` - The minimum amount of tokenB the user is willing to withdraw.
+  /// - `token_min_a` - The minimum amount of SOL the signer is willing to withdraw.
+  /// - `token_min_b` - The minimum amount of OLAS the signer is willing to withdraw.
   pub fn withdraw(
     ctx: Context<WithdrawLiquidityForTokens>,
     id: u32,
@@ -313,7 +313,7 @@ pub mod liquidity_lockbox {
         return Err(ErrorCode::WrongOrcaAccount.into());
     }
 
-    // Get program signer seeds
+    // Get lockbox signer seeds
     let signer_seeds = &[&ctx.accounts.lockbox.seeds()[..]];
 
     // Update fees for the position
