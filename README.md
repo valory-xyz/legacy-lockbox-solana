@@ -6,7 +6,7 @@ Set of lockbox contracts on Solana.
 	
 	This folder contains the liquidity lockbox v1 set of contracts on Solana. 
 
-	Developments steps, tests, documentation, audits can be found in [this]https://github.com/valory-xyz/lockbox-solana/tree/main/lockbox) folder. 
+	Developments steps, tests, documentation, audits can be found in [this](https://github.com/valory-xyz/lockbox-solana/tree/main/lockbox) folder. 
 
 2. [lockbox2](https://github.com/valory-xyz/lockbox-solana/tree/main/lockbox2)
 	

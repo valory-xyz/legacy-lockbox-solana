@@ -6,7 +6,7 @@ This folder contains the liquidity lockbox v2 set of contracts on Solana.
 The lockbox program v2 is designed to allow “bonders” to receive in exchange for OLAS and SOL tokens fungible token equivalents to the liquidity created by depositing a such amount of OLAS and SOL tokens with full range in the (OLAS-SOL) Orca whirlpool. 
 
 The description of the concept can be found here:
-[Liquidity lockbox concept](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/doc/Bonding_mechanism_with_liquidity_on_Solana_v1_v2.pdf?raw=true).
+[Liquidity lockbox concept](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/doc/Bonding_mechanism_with_liquidity_on_Solana_v1_v2.pdf).
 
 
 ## Pre-requisites

@@ -86,10 +86,10 @@ cargo spellcheck -r list-files
 cargo spellcheck --verbose check
 ```
 All automatic warnings are listed in the following file, concerns of which we address in more detail below: <br>
-[cargo-tree.txt](https://github.com/valory-xyz/lockbox-solana//blob/main/lockbox/audits/internal/analysis/cargo-tree.txt) <br>
-[cargo-audit.txt](https://github.com/valory-xyz/lockbox-solana//blob/main/lockbox/audits/internal/analysis/cargo-audit.txt) <br>
-[cargo-clippy.txt](https://github.com/valory-xyz/lockbox-solana//blob/main/lockbox/audits/internal/analysis/cargo-clippy.txt) <br>
-[cargo-geiger.txt](https://github.com/valory-xyz/lockbox-solana//blob/main/lockbox/audits/internal/analysis/cargo-geiger.txt) <br>
+[cargo-tree.txt](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/audits/internal/analysis/cargo-tree.txt) <br>
+[cargo-audit.txt](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/audits/internal/analysis/cargo-audit.txt) <br>
+[cargo-clippy.txt](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/audits/internal/analysis/cargo-clippy.txt) <br>
+[cargo-geiger.txt](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/audits/internal/analysis/cargo-geiger.txt) <br>
 Notes: <br>
 https://rustsec.org/advisories/RUSTSEC-2022-0093 - out of scope
 
@@ -97,6 +97,6 @@ https://rustsec.org/advisories/RUSTSEC-2022-0093 - out of scope
 
 ### Problems found by analysis
 ##### Sec3 x-ray scanner
-- No issue, see [here](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/audits/internal/analysis/sec3-report-12-01-24-lockbox2.PNG)
+- No issue, see [here](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox2/audits/internal/analysis/sec3-report-12-01-24-lockbox2.PNG)
 
 
