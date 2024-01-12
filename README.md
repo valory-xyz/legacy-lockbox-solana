@@ -2,35 +2,21 @@
 Set of lockbox contracts on Solana.
 
 # Current implementations
-[lockbox](https://github.com/valory-xyz/lockbox-solana/tree/mainlockbox)
-[lockbox2](https://github.com/valory-xyz/lockbox-solana/tree/mainlockbox2)
+1. [lockbox](https://github.com/valory-xyz/lockbox-solana/tree/mainlockbox) 
+	
+	This folder contains the liquidity lockbox v1 set of contracts on Solana. 
 
-## Orca Reference
-Instructions can be combined and are usually used in the following combinations
-Close also executes Harvest and Withdraw together.
-Since some programs may perform Withdraw at the same time as Harvest, the purpose of the entire transaction may not be expressed in a single word.
+	Developments steps, tests, documentation, audits can be found in [this](https://github.com/valory-xyz/lockbox-solana/tree/mainlockbox2) folder. 
 
-### Deposit
-openPosition / openPositionWithMetadata
-increaseLiquidity
+2. [lockbox2](https://github.com/valory-xyz/lockbox-solana/tree/mainlockbox2)
+	
+	This folder contains the liquidity lockbox v2 set of contracts on Solana.
 
-### Deposit to opened position
-increaseLiquidity
+	Developments steps, tests, documentation, and audits can be found in [this](https://github.com/valory-xyz/lockbox-solana/tree/mainlockbox2) folder. 
 
-### Withdraw partial
-decreaseLiquidity
-
-### Harvest
-updateFeesAndRewards
-collectFees
-collectReward
-
-### Close (Withdraw all & burn NFT)
-updateFeesAndRewards
-collectFees
-collectReward
-decreaseLiquidity
-closePosition
-
-small sample of whirlpool's instruction detection
-https://github.com/everlastingsong/solsandbox/blob/main/orca/whirlpool/whirlpools_sdk/84a_parse_whirlpool_tx.ts
+## Acknowledgements
+The liquidity lockbox contracts were inspired and based on the following sources:
+- [Orca](https://github.com/orca-so/whirlpools);
+- [EverlastingsongSolsandbox](https://github.com/everlastingsong/solsandbox);
+- [Everlastingsong Microscope](https://everlastingsong.github.io/account-microscope);
+- [Everlastingsong Nebula](https://everlastingsong.github.io/nebula/).
