@@ -16,6 +16,7 @@ Set of lockbox contracts on Solana.
 
 
 ## Pre-requisites
+A successful program CPI with Orca Whirlpool program requires that the following environment is satisfied:
 
 ```
 anchor --version
@@ -26,35 +27,7 @@ rustc --version
 rustc 1.62.0 (a8314ef7d 2022-06-27)
 ```
 
-### Instruction for first installations of pre-requisites
-
-Run the script setup-env.sh with following commard and follows the script instructions
-
-```
-./setup-env.sh 
-```
-
-At the end the script, the following have been installed
-
-```
-solana --version
-solana-cli 1.14.29 (src:36af529e; feat:139196142)
-cargo --version
-cargo 1.75.0 (1d8b05cdd 2023-11-20)
-rustc --version
-rustc 1.62.0 (a8314ef7d 2022-06-27)
-rustc 1.75.0 (82e1608df 2023-12-21)
-```
-
-Select the correct versions by running the following commands
-
-```
-rustup install 1.62
-cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-avm install 0.26.0
-rustup default 1.62
-avm use 0.26.0
-```
+Advise the script `setup-env.sh` to correctly install the required environment.
 
 
 ## Acknowledgements
