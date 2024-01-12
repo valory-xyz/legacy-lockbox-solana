@@ -214,9 +214,10 @@ https://doc.rust-lang.org/rust-by-example/meta/doc.html <br>
 1. re-initialize await program.methods.initialize()
 2. program.methods.deposit() with wrong/fake accounts
 3. program.methods.withdraw()  with wrong/fake accounts
-[x] Fixed.
+[x] Fixed
 
 #### Fixed and removed all TODO
+[x] Fixed
 
 #### Clean tests (delete commented/unused code)
 [x] Fixed
