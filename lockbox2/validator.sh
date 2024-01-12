@@ -2,7 +2,6 @@
 solana-test-validator --bpf-program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc artifacts/whirlpool.so \
 --bpf-program 7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ target/deploy/liquidity_lockbox.so \
 --account Ez3nzG9ofodYCvEmw73XhQ87LWNYVRM2s7diB5tBZPyM fork_whirlpool/Ez3nzG9ofodYCvEmw73XhQ87LWNYVRM2s7diB5tBZPyM.json \
---account JACBSWcdwYRFeP8Ab5v2d4Z2AVH4v4Fx2JTomqKARd6m fork_whirlpool/JACBSWcdwYRFeP8Ab5v2d4Z2AVH4v4Fx2JTomqKARd6m.json \
 --account 7e8LRrfeeSGfS2SSVGJMZQLQKzYhkBp8VKtt34uJMR4t fork_whirlpool/7e8LRrfeeSGfS2SSVGJMZQLQKzYhkBp8VKtt34uJMR4t.json \
 --account 5dMKUYJDsjZkAD3wiV3ViQkuq9pSmWQ5eAzcQLtDnUT3 fork_whirlpool/5dMKUYJDsjZkAD3wiV3ViQkuq9pSmWQ5eAzcQLtDnUT3.json \
 --account CLA8hU8SkdCZ9cJVLMfZQfcgAsywZ9txBJ6qrRAqthLx fork_whirlpool/CLA8hU8SkdCZ9cJVLMfZQfcgAsywZ9txBJ6qrRAqthLx.json \
