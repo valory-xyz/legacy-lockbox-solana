@@ -45,3 +45,46 @@ impl LiquidityLockbox {
     Ok(())
   }
 }
+
+#[account]
+pub struct LockboxPosition {
+  // Position identifier
+  pub id: [u8; 4],
+  // Position bump
+  pub bump: [u8; 1],
+  // Locked position data account
+  pub position_account: Pubkey,
+  // Locked position PDA ATA
+  pub position_pda_ata: Pubkey,
+  // Locked position liquidity
+  pub position_liquidity: u64
+}
+
+impl LockboxPosition {
+  pub const LEN: usize = 8 + 4 + 1 + 32 + 32 + 8;
+
+  pub fn seeds(&self) -> [&[u8]; 3] {
+    [
+      &b"lockbox_position"[..],
+      self.id.as_ref(),
+      self.bump.as_ref()
+    ]
+  }
+
+  pub fn initialize(
+    &mut self,
+    id: u32,
+    bump: u8,
+    position_liquidity: u64,
+    position_account: Pubkey,
+    position_pda_ata: Pubkey
+  ) -> Result<()> {
+    self.id = id.to_be_bytes();
+    self.bump = [bump];
+    self.position_liquidity = position_liquidity;
+    self.position_account = position_account;
+    self.position_pda_ata = position_pda_ata;
+
+    Ok(())
+  }
+}

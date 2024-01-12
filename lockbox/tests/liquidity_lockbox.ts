@@ -56,8 +56,6 @@ async function main() {
       // Full range price
       const tickSpacing = 64;
       const [lower_tick_index, upper_tick_index] = TickUtil.getFullRangeTickIndex(tickSpacing);
-      //const lower_tick_index = -443584;
-      //const upper_tick_index = 443584;
 
       // Adjust price range (not all prices can be set, only a limited number of prices are available for range specification)
       // (prices corresponding to InitializableTickIndex are available)
@@ -318,7 +316,6 @@ async function main() {
           .rpc();
     } catch (error) {}
 
-    //getAssociatedTokenAddressSync(positionMint, pdaProgram)
     // Execute the correct deposit tx
     try {
         signature = await program.methods.deposit(numPosition)
