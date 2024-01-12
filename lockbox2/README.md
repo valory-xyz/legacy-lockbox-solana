@@ -10,6 +10,8 @@ The description of the concept can be found here:
 
 
 ## Pre-requisites
+Make sure you have the versions as mentioned in the main [README](https://github.com/valory-xyz/lockbox-solana/blob/main/README.md)
+
 ```
 anchor --version
 anchor-cli 0.26.0
@@ -64,8 +66,14 @@ For debugging, after run local validator:
 solana logs -v --url localhost 7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ
 ```
 
-### Audits
-The audit is provided as development matures. The latest audit report can be found here: [audits](https://github.com/valory-xyz/lockbox-solana/tree/main/lockbox2/audits).
+
+## Documents
+All the project-related documents are located here: [docs](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox2/doc).
+
+## Audits
+- The audit is provided as development matures. The latest audit report can be found here: [audits](https://github.com/valory-xyz/lockbox-solana/tree/main/lockbox2/audits).
+
+
 
 ## Acknowledgements
 The liquidity lockbox contracts were inspired and based on the following sources:

@@ -13,6 +13,8 @@ A more detailed description of the program can be found here:
 
 
 ## Pre-requisites
+Make sure you have the versions as mentioned in the main [README](https://github.com/valory-xyz/lockbox-solana/blob/main/README.md)
+
 ```
 anchor --version
 anchor-cli 0.26.0
@@ -22,7 +24,9 @@ rustc --version
 rustc 1.62.0 (a8314ef7d 2022-06-27)
 ```
 
+
 ## Development
+
 Install the dependencies:
 ```
 yarn
@@ -67,8 +71,12 @@ For debugging, after run local validator:
 solana logs -v --url localhost 7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ
 ```
 
-### Audits
-The audit is provided as development matures. The latest audit report can be found here: [audits](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/audits).
+## Documents
+All the project-related documents are located here: [docs](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/doc).
+
+## Audits
+- The audit is provided as development matures. The latest audit report can be found here: [audits](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/audits).
+- The list of known vulnerabilities can be found here: [Vulnerabilities list](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/doc/Vulnerabilities_list_solana_lockbox_v1.pdf?raw=true).
 
 ## Acknowledgements
 The liquidity lockbox contracts were inspired and based on the following sources:
