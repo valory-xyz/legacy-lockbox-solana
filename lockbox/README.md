@@ -9,7 +9,7 @@ deposited for fungible tokens. The fungible tokens can then be transferred to Et
 in OLAS bonding programmes.
 
 A more detailed description of the program can be found here:
-[Liquidity lockbox concept](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/docs/Bonding_mechanism_with_liquidity_on_Solana_v1_v2?raw=true).
+[Liquidity lockbox concept](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/doc/Bonding_mechanism_with_liquidity_on_Solana_v1_v2.pdf?raw=true).
 
 
 ## Pre-requisites
