@@ -121,19 +121,19 @@ pub mod liquidity_lockbox {
   /// Deposits an NFT position under the Lockbox management and gets bridged tokens minted in return.
   ///
   /// ### Parameters
-  /// - `liquidity` - Lockbox position ID. Must be equal to the current total number of lockbox positions.
+  /// - `liquidity_amount` - Requested liquidity amount.
   pub fn deposit(ctx: Context<DepositPositionForLiquidity>,
-    liquidity: u128,
+    liquidity_amount: u128,
     token_max_a: u64,
     token_max_b: u64,
   ) -> Result<()> {
     // Check the liquidity amount
-    if liquidity == 0 {
+    if liquidity_amount == 0 {
       return Err(ErrorCode::LiquidityZero.into());
     }
 
     // Check that the liquidity is within uint64 bounds
-    if liquidity > std::u64::MAX as u128 {
+    if liquidity_amount > std::u64::MAX as u128 {
       return Err(ErrorCode::LiquidityOverflow.into());
     }
 
@@ -169,12 +169,13 @@ pub mod liquidity_lockbox {
     let sqrt_price_upper_x64 = sqrt_price_from_tick_index(ctx.accounts.position.tick_upper_index);
 
     // get_liquidity_from_token_a is imported from whirlpools-sdk (getLiquidityFromTokenA)
-    let liquidity = get_liquidity_from_token_a(amount_a, sqrt_price_current_x64, sqrt_price_upper_x64)?;
+    let liquidity_delta = get_liquidity_from_token_a(amount_a, sqrt_price_current_x64, sqrt_price_upper_x64)?;
+    //let liquidity_delta = liquidity_amount as i128;
     let (delta_a, delta_b) = calculate_liquidity_token_deltas(
       tick_index_current,
       sqrt_price_current_x64,
       &ctx.accounts.position,
-      liquidity as i128
+      liquidity_delta as i128
     )?;
 
     msg!("tick_index_lower: {}", tick_index_lower);
@@ -183,7 +184,7 @@ pub mod liquidity_lockbox {
     msg!("sqrt_price_lower_x64: {}", sqrt_price_lower_x64);
     msg!("sqrt_price_upper_x64: {}", sqrt_price_upper_x64);
     msg!("sqrt_price_current_x64: {}", sqrt_price_current_x64);
-    msg!("liquidity: {}", liquidity);
+    msg!("liquidity: {}", liquidity_delta);
     msg!("delta_a: {}", delta_a);
     msg!("delta_b: {}", delta_b);
 
@@ -241,9 +242,9 @@ pub mod liquidity_lockbox {
       cpi_accounts_modify_liquidity,
       signer_seeds
     );
-    whirlpool::cpi::increase_liquidity(cpi_ctx_modify_liquidity, liquidity, delta_a, delta_b)?;
+    whirlpool::cpi::increase_liquidity(cpi_ctx_modify_liquidity, liquidity_delta, delta_a, delta_b)?;
 
-    let position_liquidity = liquidity as u64;
+    let position_liquidity = liquidity_delta as u64;
 
     // Mint bridged tokens in the amount of position liquidity
     invoke_signed(
@@ -431,13 +432,15 @@ fn get_liquidity_from_token_a(amount: u128, sqrt_price_lower_x64: u128, sqrt_pri
   assert!(sqrt_price_lower_x64 < sqrt_price_upper_x64);
   let sqrt_price_diff = sqrt_price_upper_x64 - sqrt_price_lower_x64;
 
-  let numerator = mul_u256(sqrt_price_lower_x64, sqrt_price_upper_x64); // x64 * x64
+  let mut numerator = mul_u256(sqrt_price_lower_x64, sqrt_price_upper_x64); // x64 * x64
+  let amount_mul_div = U256Muldiv::new(0,amount);
+  numerator = numerator.mul(amount_mul_div);
   let denominator = U256Muldiv::new(0, sqrt_price_diff); // x64
 
   let (quotient, _remainder) = numerator.div(denominator, false);
 
   let liquidity = quotient
-    .mul(U256Muldiv::new(0, amount))
+    //.mul(U256Muldiv::new(0, amount))
     .shift_word_right()
     .try_into_u128()
     .or(Err(ErrorCode::WhirlpoolNumberDownCastError.into()));

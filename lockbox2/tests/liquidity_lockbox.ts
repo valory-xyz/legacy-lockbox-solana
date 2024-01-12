@@ -55,6 +55,7 @@ async function main() {
 
   // Set price range, amount of tokens to deposit, and acceptable slippage
   const olas_amount = DecimalUtil.toBN(new Decimal("10" /* olas */), 8);
+  const sol_amount = DecimalUtil.toBN(new Decimal("10" /* olas */), 9);
   const slippage = Percentage.fromFraction(10, 1000); // 1%
   // Full range price
   const tickSpacing = 64;
@@ -207,8 +208,8 @@ async function main() {
     tickLowerIndex: lower_tick_index,
     tickUpperIndex: upper_tick_index,
     // Input token and amount
-    inputTokenMint: olas,
-    inputTokenAmount: olas_amount,
+    inputTokenMint: sol,
+    inputTokenAmount: sol_amount,
     // Acceptable slippage
     slippageTolerance: slippage,
   });
@@ -256,7 +257,9 @@ async function main() {
         pdaProgram,
         true
     );
-    console.log("User ATA for tokenA:", tokenOwnerAccountA.address.toBase58());
+    console.log("PDA ATA for tokenA:", pdaOwnerAccountA.address.toBase58());
+    //await provider.connection.requestAirdrop(pdaOwnerAccountA.address, 100000000000);
+    await provider.connection.requestAirdrop(pdaOwnerAccountA.address, 10100000000);
 
     // Get the tokenA ATA of the userWallet address, and if it does not exist, create it
     const pdaOwnerAccountB = await getOrCreateAssociatedTokenAccount(
@@ -266,7 +269,7 @@ async function main() {
         pdaProgram,
         true
     );
-    console.log("User ATA for tokenB:", tokenOwnerAccountB.address.toBase58());
+    console.log("PDA ATA for tokenB:", pdaOwnerAccountB.address.toBase58());
 
     // ############################## DEPOSIT ##############################
     console.log("\nSending position NFT to the program in exchange of bridged tokens");
