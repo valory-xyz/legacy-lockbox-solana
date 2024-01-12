@@ -479,7 +479,8 @@ fn get_liquidity_from_token_a(amount: u128, sqrt_price_lower_x64: u128, sqrt_pri
     .shift_word_right()
     .try_into_u128()
     .or(Err(ErrorCode::WhirlpoolNumberDownCastError.into()));
-  liquidity
+
+  return liquidity;
 }
 
 #[derive(Accounts)]
