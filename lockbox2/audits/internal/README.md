@@ -59,7 +59,7 @@ https://github.com/rust-lang/rust-clippy
 ```
 cargo clippy 2> audits/internal/analysis/cargo-clippy.txt
 ```
-Pay attention.
+[x] Fixed.
 
 ##### cargo-geiger
 https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html
@@ -97,6 +97,6 @@ https://rustsec.org/advisories/RUSTSEC-2022-0093 - out of scope
 
 ### Problems found by analysis
 ##### Sec3 x-ray scanner
-- No issue, see [here](https://github.com/valory-xyz/lockbox-solana//blob/main/lockbox/audits/internal/analysis/sec3-report-12-01-24-lockbox2.PNG)
+- No issue, see [here](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/audits/internal/analysis/sec3-report-12-01-24-lockbox2.PNG)
 
 
