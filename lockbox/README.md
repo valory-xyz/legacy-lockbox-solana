@@ -56,17 +56,21 @@ export ANCHOR_PROVIDER_URL=http://127.0.0.1:8899
 export ANCHOR_WALLET=artifacts/id.json
 ```
 
-Then, execute the testing script:
+To run the initial script that would just initialize the lockbox program along with having Orca Whirlpool program
+and required user accounts setup, run:
+```
+solana airdrop 10000 9fit3w7t6FHATDaZWotpWqN7NpqgL3Lm1hqUop4hAy8h --url localhost && npx ts-node tests/lockbox_init.ts
+```
+
+To run integration test, make sure to stop and start the `validator.sh` in a separate window. Then run:
 ```
 solana airdrop 10000 9fit3w7t6FHATDaZWotpWqN7NpqgL3Lm1hqUop4hAy8h --url localhost && npx ts-node tests/liquidity_lockbox.ts
 ```
 
-If the `@programId` in lib.rs does not match with the deployed one, update it and re-run
-```
-anchor build
-```
+The deployed program ID must be `7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ` and corresponds to the `declare_id`
+in the `programs/liquidity_lockbox/src/lib.rs` and `Anchor.toml` file.
 
-For debugging, after run local validator:
+For debugging a program address, after the launch of local validator, run:
 ```
 solana logs -v --url localhost 7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ
 ```
