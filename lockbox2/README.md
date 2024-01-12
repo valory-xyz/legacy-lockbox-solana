@@ -1,15 +1,12 @@
-# Liquidity Lockbox
+# Liquidity Lockbox v2
 
 ## Introduction
-This repository contain the liquidity lockbox set of contracts on Solana.
+This folder contains the liquidity lockbox v2 set of contracts on Solana.
 
-The lockbox program is designed to allow "bonders" to deposit concentrated liquidity tokens (NFTs) from Orca whirlpool
-contracts and receive fungible token equivalents. To make this work, only LP NFTs representing a full range can be
-deposited for fungible tokens. The fungible tokens can then be transferred to Ethereum mainnet in order to participate
-in OLAS bonding programmes.
+The lockbox program v2 is designed to allow “bonders” to receive in exchange for OLAS and SOL tokens fungible token equivalents to the liquidity created by depositing a such amount of OLAS and SOL tokens with full range in the (OLAS-SOL) Orca whirlpool. 
 
 The description of the concept can be found here:
-[Liquidity lockbox concept](https://github.com/valory-xyz/solana-sandbox/blob/main/orca/lockbox/docs/Bonding_mechanism_with_liquidity_on_Solana?raw=true).
+[Liquidity lockbox concept](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/doc/Bonding_mechanism_with_liquidity_on_Solana_v1_v2.pdf?raw=true).
 
 
 ## Pre-requisites
@@ -68,7 +65,7 @@ solana logs -v --url localhost 7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ
 ```
 
 ### Audits
-The audit is provided as development matures. The latest audit report can be found here: [audits](https://github.com/valory-xyz/solana-sandbox/blob/main/orca/lockbox/audits).
+The audit is provided as development matures. The latest audit report can be found here: [audits](https://github.com/valory-xyz/lockbox-solana/tree/main/lockbox2/audits).
 
 ## Acknowledgements
 The liquidity lockbox contracts were inspired and based on the following sources:
