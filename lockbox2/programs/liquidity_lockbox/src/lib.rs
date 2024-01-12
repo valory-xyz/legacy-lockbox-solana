@@ -1,6 +1,6 @@
 pub mod state;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Mint, Token, TokenAccount, Approve};
 use whirlpool::{
   self,
   state::{Whirlpool, TickArray, Position},
@@ -193,25 +193,26 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::DeltaAmountOverflow.into());
     }
 
-    // Transfer tokens to the lockbox ATA
-    token::transfer(
+    // Approve SOL tokens for the lockbox
+    token::approve(
       CpiContext::new(
         ctx.accounts.token_program.to_account_info(),
-        Transfer {
-          from: ctx.accounts.token_owner_account_a.to_account_info(),
-          to: ctx.accounts.pda_owner_account_a.to_account_info(),
+        Approve {
+          to: ctx.accounts.token_owner_account_a.to_account_info(),
+          delegate: ctx.accounts.lockbox.to_account_info(),
           authority: ctx.accounts.signer.to_account_info(),
         },
       ),
       delta_a,
     )?;
 
-    token::transfer(
+    // Approve OLAS tokens for the lockbox
+    token::approve(
       CpiContext::new(
         ctx.accounts.token_program.to_account_info(),
-        Transfer {
-          from: ctx.accounts.token_owner_account_b.to_account_info(),
-          to: ctx.accounts.pda_owner_account_b.to_account_info(),
+        Approve {
+          to: ctx.accounts.token_owner_account_b.to_account_info(),
+          delegate: ctx.accounts.lockbox.to_account_info(),
           authority: ctx.accounts.signer.to_account_info(),
         },
       ),
@@ -230,8 +231,8 @@ pub mod liquidity_lockbox {
       position_token_account: ctx.accounts.pda_position_account.to_account_info(),
       tick_array_lower: ctx.accounts.tick_array_lower.to_account_info(),
       tick_array_upper: ctx.accounts.tick_array_upper.to_account_info(),
-      token_owner_account_a: ctx.accounts.pda_owner_account_a.to_account_info(),
-      token_owner_account_b: ctx.accounts.pda_owner_account_b.to_account_info(),
+      token_owner_account_a: ctx.accounts.token_owner_account_a.to_account_info(),
+      token_owner_account_b: ctx.accounts.token_owner_account_b.to_account_info(),
       token_vault_a: ctx.accounts.token_vault_a.to_account_info(),
       token_vault_b: ctx.accounts.token_vault_b.to_account_info(),
       token_program: ctx.accounts.token_program.to_account_info(),
@@ -520,18 +521,6 @@ pub struct DepositPositionForLiquidity<'info> {
     constraint = signer.key == &token_owner_account_b.owner
   )]
   pub token_owner_account_b: Box<Account<'info, TokenAccount>>,
-
-  #[account(mut,
-    constraint = pda_owner_account_a.mint == whirlpool.token_mint_a,
-    constraint = pda_owner_account_a.mint != pda_owner_account_b.mint,
-    constraint = lockbox.key() == pda_owner_account_a.owner
-  )]
-  pub pda_owner_account_a: Box<Account<'info, TokenAccount>>,
-  #[account(mut,
-    constraint = pda_owner_account_b.mint == whirlpool.token_mint_b,
-    constraint = lockbox.key() == pda_owner_account_b.owner
-  )]
-  pub pda_owner_account_b: Box<Account<'info, TokenAccount>>,
 
   #[account(mut,
     constraint = token_vault_a.key() == whirlpool.token_vault_a,

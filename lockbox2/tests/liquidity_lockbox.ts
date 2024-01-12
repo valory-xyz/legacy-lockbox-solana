@@ -253,28 +253,6 @@ async function main() {
     );
     console.log("User ATA for tokenB:", tokenOwnerAccountB.address.toBase58());
 
-    // Get the tokenA ATA of the userWallet address, and if it does not exist, create it
-    const pdaOwnerAccountA = await getOrCreateAssociatedTokenAccount(
-        provider.connection,
-        userWallet,
-        token_a.mint,
-        pdaProgram,
-        true
-    );
-    console.log("PDA ATA for tokenA:", pdaOwnerAccountA.address.toBase58());
-    //await provider.connection.requestAirdrop(pdaOwnerAccountA.address, 10100000000);
-
-    // Get the tokenA ATA of the userWallet address, and if it does not exist, create it
-    const pdaOwnerAccountB = await getOrCreateAssociatedTokenAccount(
-        provider.connection,
-        userWallet,
-        token_b.mint,
-        pdaProgram,
-        true
-    );
-    console.log("PDA ATA for tokenB:", pdaOwnerAccountB.address.toBase58());
-
-
     // ############################## DEPOSIT ##############################
     console.log("\nSending position NFT to the program in exchange of bridged tokens");
 
@@ -328,8 +306,6 @@ async function main() {
                 whirlpool: whirlpool,
                 tokenOwnerAccountA: tokenOwnerAccountA.address,
                 tokenOwnerAccountB: tokenOwnerAccountB.address,
-                pdaOwnerAccountA: pdaOwnerAccountA.address,
-                pdaOwnerAccountB: pdaOwnerAccountB.address,
                 tokenVaultA: tokenVaultA,
                 tokenVaultB: tokenVaultB,
                 tickArrayLower: tickArrayLower,
