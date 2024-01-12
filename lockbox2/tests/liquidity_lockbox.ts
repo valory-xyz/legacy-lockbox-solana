@@ -158,7 +158,6 @@ async function main() {
               feeCollectorTokenOwnerAccountA: feeCollectorTokenOwnerAccountA.address,
               feeCollectorTokenOwnerAccountB: feeCollectorTokenOwnerAccountB.address,
               position: position,
-              positionMint: positionMint,
               pdaPositionAccount,
               whirlpool
             }
@@ -189,7 +188,6 @@ async function main() {
               feeCollectorTokenOwnerAccountA: feeCollectorTokenOwnerAccountA.address,
               feeCollectorTokenOwnerAccountB: feeCollectorTokenOwnerAccountB.address,
               position: position,
-              positionMint: positionMint,
               pdaPositionAccount,
               whirlpool
             }
@@ -297,11 +295,10 @@ async function main() {
 
     // Execute the correct deposit tx
     try {
-        signature = await program.methods.deposit(quote.liquidityAmount, quote.tokenMaxA, quote.tokenMaxB)
+        signature = await program.methods.deposit(quote.tokenMaxA, quote.tokenMaxB)
           .accounts(
               {
                 position: position,
-                positionMint: positionMint,
                 pdaPositionAccount: pdaPositionAccount,
                 whirlpool: whirlpool,
                 tokenOwnerAccountA: tokenOwnerAccountA.address,

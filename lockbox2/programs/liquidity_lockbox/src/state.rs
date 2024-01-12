@@ -13,11 +13,13 @@ pub struct LiquidityLockbox {
   // Liquidity position
   pub position: Pubkey,
   // PDA position ATA
-  pub pda_position_account: Pubkey
+  pub pda_position_account: Pubkey,
+  // Total liquidity
+  pub total_liquidity: u64
 }
 
 impl LiquidityLockbox {
-  pub const LEN: usize = 8 + 1 + 32 * 5;
+  pub const LEN: usize = 8 + 1 + 32 * 5 + 8;
 
   pub fn seeds(&self) -> [&[u8]; 2] {
     [
@@ -40,6 +42,7 @@ impl LiquidityLockbox {
     self.fee_collector_token_owner_account_b = fee_collector_token_owner_account_b;
     self.position = position;
     self.pda_position_account = pda_position_account;
+    self.total_liquidity = 0;
     self.bump = [bump];
 
     Ok(())

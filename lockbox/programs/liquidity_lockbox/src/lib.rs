@@ -242,7 +242,6 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::LiquidityZero.into());
     }
 
-    // TODO: any other way to get PROGRAM_ID?
     // Get the lockbox position PDA ATA
     if id >= ctx.accounts.lockbox.num_positions {
       return Err(ErrorCode::WrongPositionId.into());
@@ -355,7 +354,6 @@ pub mod liquidity_lockbox {
     whirlpool::cpi::collect_fees(cpi_ctx_collect_fees)?;
 
     // CPI to decrease liquidity
-    // TODO: find out how to keep the same cpi_program variable for all of the calls
     let cpi_program_modify_liquidity = ctx.accounts.whirlpool_program.to_account_info();
     let cpi_accounts_modify_liquidity = ModifyLiquidity {
       whirlpool: ctx.accounts.whirlpool.to_account_info(),
