@@ -70,9 +70,14 @@ For debugging a program address, after the launch of local validator, run:
 solana logs -v --url localhost 7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ
 ```
 
-
 ## Documents
 All the project-related documents are located here: [docs](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox2/doc).
+
+## Tests 
+
+Stub test with only initializing the lockbox program along with having Orca Whirlpool program and required user accounts setup is located here: [lockbox_init.ts](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox2/tests/lockbox_init.ts)
+
+Integration test is located here: [liquidity_lockbox.ts](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox2/tests/liquidity_lockbox.ts) 
 
 ## Audits
 - The audit is provided as development matures. The latest audit report can be found here: [audits](https://github.com/valory-xyz/lockbox-solana/tree/main/lockbox2/audits).
