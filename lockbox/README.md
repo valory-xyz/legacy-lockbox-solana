@@ -86,7 +86,7 @@ Integration test is located here: [liquidity_lockbox.ts](https://github.com/valo
 
 
 ## Audits
-- The audit is provided as development matures. The latest audit report can be f ound here: [audits](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/audits).
+- The audit is provided as development matures. The latest audit report can be found here: [audits](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/audits).
 - The list of known vulnerabilities can be found here: [Vulnerabilities list](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox/doc/Vulnerabilities_list_solana_lockbox_v1.pdf).
 
 ## Acknowledgements
