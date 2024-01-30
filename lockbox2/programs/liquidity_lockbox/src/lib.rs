@@ -55,7 +55,7 @@ pub mod liquidity_lockbox {
     let account = &ctx.accounts.position.to_account_info();
 
     let data = account.try_borrow_data()?;
-    if data.len() < 9 {
+    if data.len() != Position::LEN {
         return Err(ErrorCode::WrongPositionHeader.into());
     }
 
