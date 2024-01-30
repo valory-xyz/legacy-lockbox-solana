@@ -5,7 +5,7 @@ import { Program } from "@coral-xyz/anchor";
 import { LiquidityLockbox } from "../target/types/liquidity_lockbox";
 import {
   createMint, mintTo, transfer, getOrCreateAssociatedTokenAccount, syncNative,
-  unpackAccount, TOKEN_PROGRAM_ID, AccountLayout, getAssociatedTokenAddress
+  unpackAccount, TOKEN_PROGRAM_ID, AccountLayout, getAssociatedTokenAddress, setAuthority, AuthorityType
 } from "@solana/spl-token";
 import {
   WhirlpoolContext, buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID,
@@ -77,7 +77,8 @@ async function main() {
     // Find a PDA account for the program
     const [pdaProgram, bump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("liquidity_lockbox", "utf-8")], program.programId);
     const bumpBytes = Buffer.from(new Uint8Array([bump]));
-    console.log("Lockbox PDA:", pdaProgram.toBase58());
+    console.log("Lockbox PDA address:", pdaProgram.toBase58());
+    console.log("Lockbox PDA bump:", bump);
 
     // Create new bridged token mint with the pda mint authority
     const bridgedTokenMint = await createMint(provider.connection, userWallet, pdaProgram, null, 8);
@@ -215,7 +216,7 @@ async function main() {
   // Output the estimation
   console.log("SOL max input:", DecimalUtil.fromBN(quote.tokenMaxA, token_a.decimals).toFixed(token_a.decimals));
   console.log("OLAS max input:", DecimalUtil.fromBN(quote.tokenMaxB, token_b.decimals).toFixed(token_b.decimals));
-  console.log("Estimated liquidity:", quote.liquidityAmount.toString());
+  console.log("Requested liquidity:", quote.liquidityAmount.toString());
 
   //console.log(quote);
 
@@ -259,7 +260,7 @@ async function main() {
 
     // Execute the correct deposit tx
     try {
-        signature = await program.methods.deposit(quote.tokenMaxA, quote.tokenMaxB)
+        signature = await program.methods.deposit(quote.liquidityAmount, quote.tokenMaxA, quote.tokenMaxB)
           .accounts(
               {
                 position: position,
@@ -309,7 +310,7 @@ async function main() {
 
     // Execute the second correct deposit tx
     try {
-        signature = await program.methods.deposit(quote.tokenMaxA, quote.tokenMaxB)
+        signature = await program.methods.deposit(quote.liquidityAmount, quote.tokenMaxA, quote.tokenMaxB)
           .accounts(
               {
                 position: position,
