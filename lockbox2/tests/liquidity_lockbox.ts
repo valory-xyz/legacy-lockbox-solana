@@ -5,7 +5,7 @@ import { Program } from "@coral-xyz/anchor";
 import { LiquidityLockbox } from "../target/types/liquidity_lockbox";
 import {
   createMint, mintTo, transfer, getOrCreateAssociatedTokenAccount, syncNative,
-  unpackAccount, TOKEN_PROGRAM_ID, AccountLayout, getAssociatedTokenAddress, setAuthority, AuthorityType
+  unpackAccount, TOKEN_PROGRAM_ID, AccountLayout, getAssociatedTokenAddress
 } from "@solana/spl-token";
 import {
   WhirlpoolContext, buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID,
