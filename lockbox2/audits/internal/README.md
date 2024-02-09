@@ -101,6 +101,7 @@ https://rustsec.org/advisories/RUSTSEC-2022-0093 - out of scope
 
 ### Re-audit 09.02.2024
 #### Possible bump ed25519-dalek?
+[x] Out of scope
 
 No security issues found due to recent changes.
 
