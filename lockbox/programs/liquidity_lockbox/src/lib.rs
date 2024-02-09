@@ -12,9 +12,6 @@ use whirlpool::{
 };
 use solana_program::{pubkey::Pubkey, program::invoke_signed};
 use spl_token::instruction::{burn_checked, close_account, mint_to};
-use anchor_lang::__private::CLOSED_ACCOUNT_DISCRIMINATOR;
-use std::io::{Cursor, Write};
-use std::ops::DerefMut;
 pub use state::*;
 
 declare_id!("7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ");
@@ -24,8 +21,6 @@ pub mod liquidity_lockbox {
   use super::*;
   use solana_program::pubkey;
 
-  // Program Id
-  const PROGRAM_ID: Pubkey = pubkey!("7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ");
   // Orca Whirlpool program address
   const ORCA: Pubkey = pubkey!("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");
   // OLAS-SOL Whirlpool address
@@ -131,7 +126,7 @@ pub mod liquidity_lockbox {
     }
 
     // Check the lockbox PDA address correctness
-    let lockbox_pda = Pubkey::find_program_address(&[b"liquidity_lockbox"], &PROGRAM_ID);
+    let lockbox_pda = Pubkey::find_program_address(&[b"liquidity_lockbox"], &ID);
     if lockbox_pda.0 != ctx.accounts.lockbox.key() {
       return Err(ErrorCode::WrongLockboxPDA.into());
     }
@@ -246,7 +241,7 @@ pub mod liquidity_lockbox {
     if id >= ctx.accounts.lockbox.num_positions {
       return Err(ErrorCode::WrongPositionId.into());
     }
-    let lockbox_position = Pubkey::find_program_address(&[b"lockbox_position", id.to_be_bytes().as_ref()], &PROGRAM_ID);
+    let lockbox_position = Pubkey::find_program_address(&[b"lockbox_position", id.to_be_bytes().as_ref()], &ID);
 
     // Check that the calculated address matches the provided PDA lockbox position
     if lockbox_position.0 != ctx.accounts.pda_lockbox_position.key() {
@@ -254,7 +249,7 @@ pub mod liquidity_lockbox {
     }
 
     // Check the lockbox PDA address correctness
-    let lockbox_pda = Pubkey::find_program_address(&[b"liquidity_lockbox"], &PROGRAM_ID);
+    let lockbox_pda = Pubkey::find_program_address(&[b"liquidity_lockbox"], &ID);
     if lockbox_pda.0 != ctx.accounts.lockbox.key() {
       return Err(ErrorCode::WrongLockboxPDA.into());
     }
@@ -401,22 +396,7 @@ pub mod liquidity_lockbox {
 
       // Close the pda_lockbox_position account and send all lamports to the receiver
       // Secure reference: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/9-closing-accounts/secure/src/lib.rs
-      let dest_starting_lamports = ctx.accounts.signer.lamports();
-
-      let account = ctx.accounts.pda_lockbox_position.to_account_info();
-      **ctx.accounts.signer.lamports.borrow_mut() = dest_starting_lamports
-        .checked_add(account.lamports())
-        .unwrap();
-      **account.lamports.borrow_mut() = 0;
-
-      let mut data = account.try_borrow_mut_data()?;
-      for byte in data.deref_mut().iter_mut() {
-        *byte = 0;
-      }
-
-      let dst: &mut [u8] = &mut data;
-      let mut cursor = Cursor::new(dst);
-      cursor.write_all(&CLOSED_ACCOUNT_DISCRIMINATOR).unwrap();
+      ctx.accounts.pda_lockbox_position.close(ctx.accounts.signer.to_account_info())?;
     } else {
       // Update position liquidity
       ctx.accounts.pda_lockbox_position.position_liquidity = remainder;
@@ -503,11 +483,11 @@ pub struct DepositPositionForLiquidity<'info> {
     payer = signer)]
   pub pda_lockbox_position: Box<Account<'info, LockboxPosition>>,
 
-  #[account(mut)]
+  #[account(mut, address = lockbox.bridged_token_mint)]
   pub bridged_token_mint: Box<Account<'info, Mint>>,
   #[account(mut,
     constraint = bridged_token_account.mint == lockbox.bridged_token_mint,
-    constraint = bridged_token_mint.key() == lockbox.bridged_token_mint,
+    constraint = bridged_token_account.mint == bridged_token_mint.key(),
     constraint = signer.key == &bridged_token_account.owner,
   )]
   pub bridged_token_account: Box<Account<'info, TokenAccount>>,
@@ -529,11 +509,11 @@ pub struct WithdrawLiquidityForTokens<'info> {
 
   pub signer: Signer<'info>,
 
-  #[account(mut)]
+  #[account(mut, address = lockbox.bridged_token_mint)]
   pub bridged_token_mint: Box<Account<'info, Mint>>,
   #[account(mut,
     constraint = bridged_token_account.mint == lockbox.bridged_token_mint,
-    constraint = lockbox.bridged_token_mint == bridged_token_mint.key(),
+    constraint = bridged_token_account.mint == bridged_token_mint.key(),
     constraint = signer.key == &bridged_token_account.owner,
   )]
   pub bridged_token_account: Box<Account<'info, TokenAccount>>,
