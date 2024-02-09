@@ -99,4 +99,11 @@ https://rustsec.org/advisories/RUSTSEC-2022-0093 - out of scope
 ##### Sec3 x-ray scanner
 - No issue, see [here](https://github.com/valory-xyz/lockbox-solana/blob/main/lockbox2/audits/internal/analysis/sec3-report-12-01-24-lockbox2.PNG)
 
+### Re-audit 09.02.2024
+#### Possible bump ed25519-dalek?
+
+No security issues found due to recent changes.
+
+
+
 
