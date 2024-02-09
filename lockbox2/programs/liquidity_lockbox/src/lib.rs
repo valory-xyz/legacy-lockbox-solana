@@ -4,9 +4,6 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Approve};
 use whirlpool::{
   self,
   state::{Whirlpool, TickArray, Position},
-  math::sqrt_price_from_tick_index,
-  math::{mul_u256, U256Muldiv},
-  manager::liquidity_manager::calculate_liquidity_token_deltas,
   cpi::accounts::ModifyLiquidity,
   cpi::accounts::UpdateFeesAndRewards,
   cpi::accounts::CollectFees
@@ -121,9 +118,11 @@ pub mod liquidity_lockbox {
   /// Deposits an NFT position under the Lockbox management and gets bridged tokens minted in return.
   ///
   /// ### Parameters
+  /// - `liquidity_amount` - Requested liquidity amount.
   /// - `token_max_a` - Max amount of SOL token to be added for liquidity.
   /// - `token_max_b` - Max amount of OLAS token to be added for liquidity.
   pub fn deposit(ctx: Context<DepositPositionForLiquidity>,
+    liquidity_amount: u64,
     token_max_a: u64,
     token_max_b: u64,
   ) -> Result<()> {
@@ -185,35 +184,10 @@ pub mod liquidity_lockbox {
       return Err(ErrorCode::OutOfRange.into());
     }
 
-    let sqrt_price_current_x64 = ctx.accounts.whirlpool.sqrt_price;
-    let sqrt_price_upper_x64 = sqrt_price_from_tick_index(ctx.accounts.position.tick_upper_index);
-
-    // get_liquidity_from_token_a is imported from whirlpools-sdk (getLiquidityFromTokenA)
-    let liquidity_amount = get_liquidity_from_token_a(token_max_a as u128, sqrt_price_current_x64, sqrt_price_upper_x64)?;
-
-    let (delta_a, delta_b) = calculate_liquidity_token_deltas(
-      tick_index_current,
-      sqrt_price_current_x64,
-      &ctx.accounts.position,
-      liquidity_amount as i128
-    )?;
-
-    // block too much deposit
-    if delta_a > token_max_a || delta_b > token_max_b {
-      return Err(ErrorCode::DeltaAmountOverflow.into());
-    }
-
-    // Check that the liquidity is within uint64 bounds
-    if liquidity_amount > std::u64::MAX as u128 {
-      return Err(ErrorCode::LiquidityOverflow.into());
-    }
-
-    let position_liquidity = liquidity_amount as u64;
-
     // Total liquidity update with the check
     ctx.accounts.lockbox.total_liquidity = ctx.accounts.lockbox
       .total_liquidity
-      .checked_add(position_liquidity)
+      .checked_add(liquidity_amount)
       .unwrap_or_else(|| panic!("Liquidity overflow"));
 
     // Approve SOL tokens for the lockbox
@@ -226,7 +200,7 @@ pub mod liquidity_lockbox {
           authority: ctx.accounts.signer.to_account_info(),
         },
       ),
-      delta_a,
+      token_max_a,
     )?;
 
     // Approve OLAS tokens for the lockbox
@@ -239,7 +213,7 @@ pub mod liquidity_lockbox {
           authority: ctx.accounts.signer.to_account_info(),
         },
       ),
-      delta_b,
+      token_max_b,
     )?;
 
     // Get lockbox signer seeds
@@ -266,7 +240,7 @@ pub mod liquidity_lockbox {
       cpi_accounts_modify_liquidity,
       signer_seeds
     );
-    whirlpool::cpi::increase_liquidity(cpi_ctx_modify_liquidity, liquidity_amount, delta_a, delta_b)?;
+    whirlpool::cpi::increase_liquidity(cpi_ctx_modify_liquidity, liquidity_amount as u128, token_max_a, token_max_b)?;
 
     // Mint bridged tokens in the amount of position liquidity
     invoke_signed(
@@ -276,7 +250,7 @@ pub mod liquidity_lockbox {
         ctx.accounts.bridged_token_account.to_account_info().key,
         ctx.accounts.lockbox.to_account_info().key,
         &[ctx.accounts.lockbox.to_account_info().key],
-        position_liquidity,
+        liquidity_amount,
       )?,
       &[
         ctx.accounts.bridged_token_mint.to_account_info(),
@@ -287,12 +261,36 @@ pub mod liquidity_lockbox {
       &[&ctx.accounts.lockbox.seeds()],
     )?;
 
+    // Revoke approval for unused SOL tokens
+    token::approve(
+      CpiContext::new(
+        ctx.accounts.token_program.to_account_info(),
+        Approve {
+          to: ctx.accounts.token_owner_account_a.to_account_info(),
+          delegate: ctx.accounts.lockbox.to_account_info(),
+          authority: ctx.accounts.signer.to_account_info(),
+        },
+      ),
+      0,
+    )?;
+
+    // Revoke approval for OLAS tokens
+    token::approve(
+      CpiContext::new(
+        ctx.accounts.token_program.to_account_info(),
+        Approve {
+          to: ctx.accounts.token_owner_account_b.to_account_info(),
+          delegate: ctx.accounts.lockbox.to_account_info(),
+          authority: ctx.accounts.signer.to_account_info(),
+        },
+      ),
+      0,
+    )?;
+
     emit!(DepositEvent {
       signer: ctx.accounts.signer.key(),
       position: ctx.accounts.position.key(),
-      amount_a: delta_a,
-      amount_b: delta_b,
-      deposit_liquidity: position_liquidity,
+      deposit_liquidity: liquidity_amount,
       total_liquidity: ctx.accounts.lockbox.total_liquidity
     });
 
@@ -453,34 +451,6 @@ pub mod liquidity_lockbox {
 
     Ok(())
   }
-}
-
-// https://github.com/orca-so/whirlpools/blob/main/sdk/src/quotes/public/increase-liquidity-quote.ts#L147
-// https://github.com/orca-so/whirlpools/blob/537306c096bcbbf9cb8d5cff337c989dcdd999b4/sdk/src/utils/position-util.ts#L69
-/// Gets liquidity from token A parameters.
-///
-/// ### Parameters
-/// - `amount` - Token A amount.
-/// - `sqrt_price_lower_x64` - Lower sqrt price.
-/// - `sqrt_price_upper_x64` - Upper sqrt price.
-fn get_liquidity_from_token_a(amount: u128, sqrt_price_lower_x64: u128, sqrt_price_upper_x64: u128 ) -> Result<u128> {
-  // Δa = liquidity/sqrt_price_lower - liquidity/sqrt_price_upper
-  // liquidity = Δa * ((sqrt_price_lower * sqrt_price_upper) / (sqrt_price_upper - sqrt_price_lower))
-  assert!(sqrt_price_lower_x64 < sqrt_price_upper_x64);
-  let sqrt_price_diff = sqrt_price_upper_x64 - sqrt_price_lower_x64;
-
-  let numerator = mul_u256(sqrt_price_lower_x64, sqrt_price_upper_x64); // x64 * x64
-  let denominator = U256Muldiv::new(0, sqrt_price_diff); // x64
-
-  let (quotient, _remainder) = numerator.div(denominator, false);
-
-  let liquidity = quotient
-    .mul(U256Muldiv::new(0, amount))
-    .shift_word_right()
-    .try_into_u128()
-    .or(Err(ErrorCode::WhirlpoolNumberDownCastError.into()));
-
-  return liquidity;
 }
 
 #[derive(Accounts)]
@@ -708,10 +678,6 @@ pub struct DepositEvent {
     // Liquidity position
     #[index]
     pub position: Pubkey,
-    // Amount of SOL token for the liquidity
-    pub amount_a: u64,
-    // Amount of OLAS token for the liquidity
-    pub amount_b: u64,
     // Deposit liquidity amount
     pub deposit_liquidity: u64,
     // Total position liquidity
