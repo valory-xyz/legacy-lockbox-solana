@@ -396,6 +396,7 @@ pub mod liquidity_lockbox {
 
       // Close the pda_lockbox_position account and send all lamports to the receiver
       // Secure reference: https://github.com/coral-xyz/sealevel-attacks/blob/master/programs/9-closing-accounts/secure/src/lib.rs
+      // which was previously implemented here: https://github.com/valory-xyz/lockbox-solana/blob/04781fa3968a14347ee33f1c4df6184d902e4c6f/lockbox/programs/liquidity_lockbox/src/lib.rs#L402-L419
       ctx.accounts.pda_lockbox_position.close(ctx.accounts.signer.to_account_info())?;
     } else {
       // Update position liquidity
@@ -507,6 +508,7 @@ pub struct WithdrawLiquidityForTokens<'info> {
   #[account(mut)]
   pub whirlpool: Box<Account<'info, Whirlpool>>,
 
+  #[account(mut)]
   pub signer: Signer<'info>,
 
   #[account(mut, address = lockbox.bridged_token_mint)]

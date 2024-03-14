@@ -115,7 +115,7 @@ pub mod liquidity_lockbox {
     Ok(())
   }
 
-  /// Deposits an NFT position under the Lockbox management and gets bridged tokens minted in return.
+  /// Deposits SOL and OLAS tokens to be added to the Lockbox position and gets bridged tokens minted in return.
   ///
   /// ### Parameters
   /// - `liquidity_amount` - Requested liquidity amount.
@@ -469,11 +469,14 @@ pub struct InitializeLiquidityLockbox<'info> {
   #[account(constraint = signer.key == &fee_collector_token_owner_account_b.owner)]
   pub fee_collector_token_owner_account_b: Box<Account<'info, TokenAccount>>,
 
-  #[account(has_one = whirlpool)]
+  #[account(has_one = whirlpool, has_one = position_mint)]
   pub position: Box<Account<'info, Position>>,
 
+  #[account(address = position.position_mint, constraint = position_mint.supply == 1)]
+  pub position_mint: Box<Account<'info, Mint>>,
+
   #[account(mut,
-    constraint = pda_position_account.mint == position.position_mint,
+    constraint = pda_position_account.mint == position_mint.key(),
     constraint = pda_position_account.amount == 1,
     constraint = lockbox.key() == pda_position_account.owner
   )]
@@ -492,13 +495,16 @@ pub struct DepositPositionForLiquidity<'info> {
   #[account(mut)]
   pub signer: Signer<'info>,
 
-  #[account(mut, address = lockbox.position, has_one = whirlpool)]
+  #[account(mut, address = lockbox.position, has_one = whirlpool, has_one = position_mint)]
   pub position: Box<Account<'info, Position>>,
+
+  #[account(address = position.position_mint, constraint = position_mint.supply == 1)]
+  pub position_mint: Box<Account<'info, Mint>>,
 
   #[account(mut,
     address = lockbox.pda_position_account.key(),
     constraint = lockbox.key() == pda_position_account.owner,
-    constraint = pda_position_account.mint == position.position_mint,
+    constraint = pda_position_account.mint == position_mint.key(),
     constraint = pda_position_account.amount == 1
   )]
   pub pda_position_account: Box<Account<'info, TokenAccount>>,
@@ -573,7 +579,7 @@ pub struct WithdrawLiquidityForTokens<'info> {
   pub position: Box<Account<'info, Position>>,
   #[account(mut,
     address = lockbox.pda_position_account.key(),
-    constraint = pda_position_account.mint == position.position_mint,
+    constraint = pda_position_account.mint == position_mint.key(),
     constraint = pda_position_account.amount == 1,
     constraint = lockbox.key() == pda_position_account.owner
   )]

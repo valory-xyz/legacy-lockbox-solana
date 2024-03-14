@@ -159,6 +159,7 @@ async function main() {
               feeCollectorTokenOwnerAccountA: feeCollectorTokenOwnerAccountA.address,
               feeCollectorTokenOwnerAccountB: feeCollectorTokenOwnerAccountB.address,
               position: position,
+              positionMint: positionMint,
               pdaPositionAccount,
               whirlpool
             }
@@ -189,6 +190,7 @@ async function main() {
               feeCollectorTokenOwnerAccountA: feeCollectorTokenOwnerAccountA.address,
               feeCollectorTokenOwnerAccountB: feeCollectorTokenOwnerAccountB.address,
               position: position,
+              positionMint: positionMint,
               pdaPositionAccount,
               whirlpool
             }
@@ -264,6 +266,7 @@ async function main() {
           .accounts(
               {
                 position: position,
+                positionMint: positionMint,
                 pdaPositionAccount: pdaPositionAccount,
                 whirlpool: whirlpool,
                 tokenOwnerAccountA: tokenOwnerAccountA.address,
@@ -314,6 +317,7 @@ async function main() {
           .accounts(
               {
                 position: position,
+                positionMint: positionMint,
                 pdaPositionAccount: pdaPositionAccount,
                 whirlpool: whirlpool,
                 tokenOwnerAccountA: tokenOwnerAccountA.address,
