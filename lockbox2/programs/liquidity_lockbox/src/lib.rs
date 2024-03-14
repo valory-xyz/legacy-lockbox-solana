@@ -579,7 +579,7 @@ pub struct WithdrawLiquidityForTokens<'info> {
   pub position: Box<Account<'info, Position>>,
   #[account(mut,
     address = lockbox.pda_position_account.key(),
-    constraint = pda_position_account.mint == position.position_mint,
+    constraint = pda_position_account.mint == position_mint.key(),
     constraint = pda_position_account.amount == 1,
     constraint = lockbox.key() == pda_position_account.owner
   )]
