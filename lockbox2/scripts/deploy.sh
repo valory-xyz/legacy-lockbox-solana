@@ -2,24 +2,20 @@
 # networks lists: https://solana.com/rpc
 # NETWORK=localhost
 # NETWORK=https://api.devnet.solana.com
-# NETWORK=https://api.mainnet-beta.solana.com
+NETWORK=https://api.mainnet-beta.solana.com
 # NETWORK=https://api.testnet.solana.com
 # progmramId
 # result of generation
-PPKEYFILE=key.json
-PD=address
+PPKEYFILE=$1
+PD=$2
 
 if [ ! -f ${PPKEYFILE} ]; then
 	echo "missing ${PPKEYFILE}"
 	exit 1
 fi
 
-# deployer address for ledger
-# https://docs.solanalabs.com/cli/wallets/hardware/ledger
-# solana-keygen pubkey usb://ledger
-# for Mac outside of bash: solana-keygen pubkey usb://ledger\?key=0/0
-# WALLET="usb://ledger?key=0/0"
-WALLET=""
+# JSON key file (Keypair Path) available via the "solana config get" command
+WALLET=$3
 WALLETK=$(solana address -k ${WALLET})
 
 # configure to deploy
