@@ -5,7 +5,7 @@ import { Program } from "@coral-xyz/anchor";
 import { LiquidityLockbox } from "../target/types/liquidity_lockbox";
 import {
   createMint, mintTo, transfer, getOrCreateAssociatedTokenAccount, syncNative,
-  unpackAccount, TOKEN_PROGRAM_ID, AccountLayout, getAssociatedTokenAddress
+  unpackAccount, TOKEN_PROGRAM_ID, AccountLayout, getAssociatedTokenAddress, setAuthority, AuthorityType
 } from "@solana/spl-token";
 import {
   WhirlpoolContext, buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID,
@@ -18,15 +18,16 @@ import expect from "expect";
 import fs from "fs";
 
 // UNIX/Linux/Mac
-// bash$ export ANCHOR_PROVIDER_URL=http://127.0.0.1:8899
-// bash$ export ANCHOR_WALLET=artifacts/id.json
+// bash$ export ANCHOR_PROVIDER_URL=https://api.mainnet-beta.solana.com
+// bash$ export ANCHOR_WALLET=id.json
 
 async function main() {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  const PROGRAM_ID = new anchor.web3.PublicKey("7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ");
+  // Program key must be correctly set here
+  const PROGRAM_ID = new anchor.web3.PublicKey("");
   const program = new Program(idl as anchor.Idl, PROGRAM_ID, anchor.getProvider()) as Program<LiquidityLockbox>;
 
   const orca = new anchor.web3.PublicKey("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");
@@ -48,23 +49,11 @@ async function main() {
   const client = buildWhirlpoolClient(ctx);
   const whirlpoolClient = await client.getPool(whirlpool);
 
-  // Get the current price of the pool
-  const sqrt_price_x64 = whirlpoolClient.getData().sqrtPrice;
-  const price = PriceMath.sqrtPriceX64ToPrice(sqrt_price_x64, 9, 8);
-  console.log("price:", price.toFixed(8));
-
-  // Set price range, amount of tokens to deposit, and acceptable slippage
-  const olas_amount = DecimalUtil.toBN(new Decimal("10" /* olas */), 8);
-  const sol_amount = DecimalUtil.toBN(new Decimal("10" /* olas */), 9);
-  const slippage = Percentage.fromFraction(10, 1000); // 1%
   // Full range price
   const tickSpacing = 64;
   const [lower_tick_index, upper_tick_index] = TickUtil.getFullRangeTickIndex(tickSpacing);
 
-
-  // Adjust price range (not all prices can be set, only a limited number of prices are available for range specification)
-  // (prices corresponding to InitializableTickIndex are available)
-  const whirlpool_data = whirlpoolClient.getData();
+  // Whirlpool tokens
   const token_a = whirlpoolClient.getTokenAInfo();
   const token_b = whirlpoolClient.getTokenBInfo();
 
@@ -181,6 +170,24 @@ async function main() {
     });
 
     console.log("Successfully initialized lockbox");
+
+//    // Update fee collector authority
+//    try {
+//      // Attempt to change owner of Associated Token Account
+//      await setAuthority(
+//        provider.connection, // Connection to use
+//        userWallet, // Payer of the transaction fee
+//        feeCollectorTokenOwnerAccountA.address, // Associated Token Account
+//        userWallet.publicKey, // Owner of the Associated Token Account
+//        AuthorityType.AccountOwner, // Type of Authority
+//        pdaProgram, // New Account Owner
+//        undefined, // Additional signers
+//        undefined, // Confirmation options
+//        TOKEN_PROGRAM_ID, // Token Extension Program ID
+//      );
+//    } catch (error) {
+//      console.log("\nExpect Error:", error);
+//    }
 }
 
 main();

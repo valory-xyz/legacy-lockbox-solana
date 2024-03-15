@@ -4,6 +4,9 @@ RUSTVER="1.62"
 SOLANAVER="1.14.29"
 ANCHORVER="0.26.0"
 
+# Quick change of solana version:
+#solana-install init $SOLANAVER
+
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup install $RUSTVER
 rustup default $RUSTVER
