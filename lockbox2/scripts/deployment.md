@@ -17,3 +17,5 @@ Then run the initialization script:
 ```
 npx ts-node lockbox_init.ts
 ```
+
+To add liquidity:

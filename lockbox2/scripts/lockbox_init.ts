@@ -27,7 +27,7 @@ async function main() {
   anchor.setProvider(provider);
 
   // Program key must be correctly set here
-  const PROGRAM_ID = new anchor.web3.PublicKey("");
+  const PROGRAM_ID = new anchor.web3.PublicKey("1BoXeb8hobfLCHNsyCoG1jpEv41ez4w4eDrJ48N1jY3");
   const program = new Program(idl as anchor.Idl, PROGRAM_ID, anchor.getProvider()) as Program<LiquidityLockbox>;
 
   const orca = new anchor.web3.PublicKey("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");
@@ -66,12 +66,12 @@ async function main() {
     // Find a PDA account for the program
     const [pdaProgram, bump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from("liquidity_lockbox", "utf-8")], program.programId);
     const bumpBytes = Buffer.from(new Uint8Array([bump]));
-    console.log("Lockbox PDA address:", pdaProgram.toBase58());
+    console.log("Lockbox PDA address:", pdaProgram.toBase58()); // 3UaaD3puPemoZk7qFYJWWCvmN6diS7P63YR4Si9QRpaW
     console.log("Lockbox PDA bump:", bump);
 
     // Create new bridged token mint with the pda mint authority
     const bridgedTokenMint = await createMint(provider.connection, userWallet, pdaProgram, null, 8);
-    console.log("Bridged token mint:", bridgedTokenMint.toBase58());
+    console.log("Bridged token mint:", bridgedTokenMint.toBase58()); // CeZ77ti3nPAmcgRkBkUC1JcoAhR8jRti2DHaCcuyUnzR
 
     let accountInfo = await provider.connection.getAccountInfo(bridgedTokenMint);
     //console.log(accountInfo);
@@ -96,9 +96,9 @@ async function main() {
   // Get all teh accounts for the initial zero position
   const positionMintKeypair = anchor.web3.Keypair.generate();
   const positionMint = positionMintKeypair.publicKey;
-  console.log("positionMint:", positionMint.toBase58());
+  console.log("positionMint:", positionMint.toBase58()); // 36WxSP8trn5czobJaa2Ka7jN58B7sCN7xx2HDom6TDEh
   const positionPda = PDAUtil.getPosition(orca, positionMint);
-  const position = positionPda.publicKey;
+  const position = positionPda.publicKey; // EHQbFx7m5gPBqXXiViNBfHJDRUuFgqqYsLzuWu18ckaR
   console.log("position:", position.toBase58());
 
   // ATA for the PDA to store the position NFT
@@ -107,7 +107,7 @@ async function main() {
       pdaProgram,
       true // allowOwnerOffCurve - allow pda accounts to be have associated token account
   );
-  console.log("PDA ATA:", pdaPositionAccount.toBase58());
+  console.log("PDA ATA:", pdaPositionAccount.toBase58()); // sVFBxraUUqmiVFeruh1M7bZS9yuNcoH7Nysh3YTSnZJ
 
   let signature = null;
 
@@ -137,6 +137,7 @@ async function main() {
             console.error("Transaction Error:", error);
         }
     }
+  // tx: 656icCoE3b9CQhywH6V6BgT5Bh8wnLBCzsjQvuiiADs1MDUA5dba6UfFradxKG2cixwy72bYNqCjp87vK4oKV6Ut
 
     // Initialize the LiquidityLockbox state
     try {
@@ -168,6 +169,7 @@ async function main() {
         signature: signature,
         ...(await provider.connection.getLatestBlockhash()),
     });
+    // tx: 3quuoWcFfUbvwkbdihZcuhe5Ed8HGwGojDqbCDWbJV7aS21f6LWzNaXNVNkBoSr4NKKyTdKTXvPJ5isoNXdivckB
 
     console.log("Successfully initialized lockbox");
 
