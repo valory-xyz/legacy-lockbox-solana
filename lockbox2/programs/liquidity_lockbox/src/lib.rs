@@ -12,7 +12,7 @@ use solana_program::{pubkey::Pubkey, program::invoke_signed};
 use spl_token::instruction::{burn_checked, mint_to};
 pub use state::*;
 
-declare_id!("7ahQGWysExobjeZ91RTsNqTCN3kWyHGZ43ud2vB7VVoZ");
+declare_id!("1BoXeb8hobfLCHNsyCoG1jpEv41ez4w4eDrJ48N1jY3");
 
 #[program]
 pub mod liquidity_lockbox {

@@ -99,7 +99,7 @@ The deployment procedure is described here: [deployment](https://github.com/valo
 ## Verification
 [IDL publishing](https://docs.solscan.io/transaction-details/anchor-verified-programs):
 ```
-anchor idl init -f target/idl/liquidity_lockbox.json --provider.cluster https://api.mainnet-beta.solana.com 1BoXeb8hobfLCHNsyCoG1jpEv41ez4w4eDrJ48N1jY3
+anchor idl init -f scripts/liquidity_lockbox.json --provider.cluster https://api.mainnet-beta.solana.com 1BoXeb8hobfLCHNsyCoG1jpEv41ez4w4eDrJ48N1jY3
 ```
 
 [Solana Verify CLI](https://github.com/Ellipsis-Labs/solana-verifiable-build).
