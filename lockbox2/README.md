@@ -85,6 +85,25 @@ Integration test is located here: [liquidity_lockbox.ts](https://github.com/valo
 ## Deployment
 The deployment procedure is described here: [deployment](https://github.com/valory-xyz/lockbox-solana/tree/main/lockbox2/scripts/deployment.md).
 
+### Addresses
+- Program ID: [1BoXeb8hobfLCHNsyCoG1jpEv41ez4w4eDrJ48N1jY3](https://solscan.io/account/1BoXeb8hobfLCHNsyCoG1jpEv41ez4w4eDrJ48N1jY3)
+- Lockbox: [3UaaD3puPemoZk7qFYJWWCvmN6diS7P63YR4Si9QRpaW](https://solscan.io/account/3UaaD3puPemoZk7qFYJWWCvmN6diS7P63YR4Si9QRpaW)
+- Position mint: [36WxSP8trn5czobJaa2Ka7jN58B7sCN7xx2HDom6TDEh](https://solscan.io/account/36WxSP8trn5czobJaa2Ka7jN58B7sCN7xx2HDom6TDEh)
+- Position: [EHQbFx7m5gPBqXXiViNBfHJDRUuFgqqYsLzuWu18ckaR](https://solscan.io/account/EHQbFx7m5gPBqXXiViNBfHJDRUuFgqqYsLzuWu18ckaR)
+- Lockbox position account: [sVFBxraUUqmiVFeruh1M7bZS9yuNcoH7Nysh3YTSnZJ](https://solscan.io/account/sVFBxraUUqmiVFeruh1M7bZS9yuNcoH7Nysh3YTSnZJ)
+- Bridged token mint: [CeZ77ti3nPAmcgRkBkUC1JcoAhR8jRti2DHaCcuyUnzR](https://solscan.io/account/CeZ77ti3nPAmcgRkBkUC1JcoAhR8jRti2DHaCcuyUnzR)
+- Fee collector token account for SOL: [Gn7oD4PmQth4ehA4b8PpHzq5v1UXPL61jAZd6CSuPvFU](https://solscan.io/account/Gn7oD4PmQth4ehA4b8PpHzq5v1UXPL61jAZd6CSuPvFU)
+- Fee collector token account for OLAS: [FPaBgHbaJR39WBNn6xZRAmurQCBH9QSNWZ5Kk26cGs9d](https://solscan.io/account/FPaBgHbaJR39WBNn6xZRAmurQCBH9QSNWZ5Kk26cGs9d)
+
+
+## Verification
+[IDL publishing](https://docs.solscan.io/transaction-details/anchor-verified-programs):
+```
+anchor idl init -f scripts/liquidity_lockbox.json --provider.cluster https://api.mainnet-beta.solana.com 1BoXeb8hobfLCHNsyCoG1jpEv41ez4w4eDrJ48N1jY3
+```
+
+[Solana Verify CLI](https://github.com/Ellipsis-Labs/solana-verifiable-build).
+
 
 ## Acknowledgements
 The liquidity lockbox contracts were inspired and based on the following sources:

@@ -17,3 +17,13 @@ Then run the initialization script:
 ```
 npx ts-node lockbox_init.ts
 ```
+
+To add liquidity via the script:
+```
+npx ts-node lockbox_deposit.ts
+```
+
+To withdraw liquidity via the script:
+```
+npx ts-node lockbox_withdraw.ts
+```

@@ -4,14 +4,12 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { LiquidityLockbox } from "../target/types/liquidity_lockbox";
 import {
-  createMint, mintTo, transfer, getOrCreateAssociatedTokenAccount, syncNative, createSyncNativeInstruction,
+  createMint, mintTo, transfer, getOrCreateAssociatedTokenAccount, syncNative,
   unpackAccount, TOKEN_PROGRAM_ID, AccountLayout, getAssociatedTokenAddress, setAuthority, AuthorityType
 } from "@solana/spl-token";
-import {SystemProgram, Transaction, sendAndConfirmTransaction} from "@solana/web3.js";
 import {
   WhirlpoolContext, buildWhirlpoolClient, ORCA_WHIRLPOOL_PROGRAM_ID,
-  PDAUtil, PoolUtil, PriceMath, increaseLiquidityQuoteByInputTokenWithParams,
-  decreaseLiquidityQuoteByLiquidityWithParams, TickUtil
+  PDAUtil, PoolUtil, PriceMath, decreaseLiquidityQuoteByLiquidityWithParams, TickUtil
 } from "@orca-so/whirlpools-sdk";
 import { DecimalUtil, Percentage } from "@orca-so/common-sdk";
 import Decimal from "decimal.js";
@@ -47,6 +45,8 @@ async function main() {
   const position = new anchor.web3.PublicKey("EHQbFx7m5gPBqXXiViNBfHJDRUuFgqqYsLzuWu18ckaR");
   const pdaPositionAccount = new anchor.web3.PublicKey("sVFBxraUUqmiVFeruh1M7bZS9yuNcoH7Nysh3YTSnZJ");
   const bridgedTokenMint = new anchor.web3.PublicKey("CeZ77ti3nPAmcgRkBkUC1JcoAhR8jRti2DHaCcuyUnzR");
+  const feeCollectorTokenOwnerAccountA = new anchor.web3.PublicKey("Gn7oD4PmQth4ehA4b8PpHzq5v1UXPL61jAZd6CSuPvFU");
+  const feeCollectorTokenOwnerAccountB = new anchor.web3.PublicKey("FPaBgHbaJR39WBNn6xZRAmurQCBH9QSNWZ5Kk26cGs9d");
 
   // User wallet is the provider payer
   const userWallet = provider.wallet["payer"];
@@ -66,30 +66,11 @@ async function main() {
   const token_b = whirlpoolClient.getTokenBInfo();
 
   // Set price range, amount of tokens to deposit, and acceptable slippage
-  const sol_amount = DecimalUtil.toBN(new Decimal("0.03" /* olas */), 9);
   const slippage = Percentage.fromFraction(10, 1000); // 1%
 
-  // Obtain deposit estimation
-  let quote = increaseLiquidityQuoteByInputTokenWithParams({
-    // Pass the pool definition and state
-    tokenMintA: token_a.mint,
-    tokenMintB: token_b.mint,
-    sqrtPrice: whirlpool_data.sqrtPrice,
-    tickCurrentIndex: whirlpool_data.tickCurrentIndex,
-    // Price range
-    tickLowerIndex: lower_tick_index,
-    tickUpperIndex: upper_tick_index,
-    // Input token and amount
-    inputTokenMint: sol,
-    inputTokenAmount: sol_amount,
-    // Acceptable slippage
-    slippageTolerance: slippage,
-  });
-
-  // Output the estimation
-  console.log("SOL max input:", DecimalUtil.fromBN(quote.tokenMaxA, token_a.decimals).toFixed(token_a.decimals));
-  console.log("OLAS max input:", DecimalUtil.fromBN(quote.tokenMaxB, token_b.decimals).toFixed(token_b.decimals));
-  console.log("Requested liquidity:", quote.liquidityAmount.toString());
+  // Get the status of the position
+  const positionSDK = await client.getPosition(position);
+  const data = positionSDK.getData();
 
     // Get the ATA of the userWallet address, and if it does not exist, create it
     // This account will have bridged tokens
@@ -101,6 +82,37 @@ async function main() {
     );
     console.log("User ATA for bridged:", bridgedTokenAccount.address.toBase58());
 
+  // Find bridged token amount
+  let tokenAccounts = await provider.connection.getTokenAccountsByOwner(
+    userWallet.publicKey,
+    { programId: TOKEN_PROGRAM_ID }
+  );
+
+  let bridgedTokenAmount = "";
+  tokenAccounts.value.forEach((tokenAccount) => {
+    const accountData = AccountLayout.decode(tokenAccount.account.data);
+    if (accountData.mint.toString() == bridgedTokenMint.toString()) {
+      console.log("User ATA bridged balance:", accountData.amount.toString());
+      bridgedTokenAmount = accountData.amount.toString();
+    }
+  });
+
+  let quote = decreaseLiquidityQuoteByLiquidityWithParams({
+    // Pass the pool state as is
+    sqrtPrice: whirlpool_data.sqrtPrice,
+    tickCurrentIndex: whirlpool_data.tickCurrentIndex,
+    // Pass the price range of the position as is
+    tickLowerIndex: data.tickLowerIndex,
+    tickUpperIndex: data.tickUpperIndex,
+    // Liquidity to be withdrawn
+    liquidity: new anchor.BN(bridgedTokenAmount),
+    // Acceptable slippage
+    slippageTolerance: slippage,
+  });
+  console.log("tokenMinA", quote.tokenMinA.toString());
+  console.log("tokenMinB", quote.tokenMinB.toString());
+  console.log("liquidity", quote.liquidityAmount.toString());
+
     // Get the tokenA ATA of the userWallet address, and if it does not exist, create it
     const tokenOwnerAccountA = await getOrCreateAssociatedTokenAccount(
         provider.connection,
@@ -109,33 +121,6 @@ async function main() {
         userWallet.publicKey
     );
     console.log("User ATA for tokenA:", tokenOwnerAccountA.address.toBase58());
-
-    // TODO Check the wrapped SOL amount and transfer if insufficient
-    // Transfer SOL to associated token account and use SyncNative to update wrapped SOL balance
-    // Wrap the required amount of SOL by transferring SOL to WSOL ATA and syncing native
-    const solTransferTransaction = new Transaction()
-      .add(
-        SystemProgram.transfer({
-            fromPubkey: userWallet.publicKey,
-            toPubkey: tokenOwnerAccountA.address,
-            lamports: quote.tokenMaxA.toNumber()
-          }),
-          createSyncNativeInstruction(
-            tokenOwnerAccountA.address
-          )
-      )
-    let signature;
-    try {
-        signature = await sendAndConfirmTransaction(provider.connection, solTransferTransaction, [userWallet]);
-    } catch (error) {
-        if (error instanceof Error && "message" in error) {
-            console.error("Program Error:", error);
-            console.error("Error Message:", error.message);
-        } else {
-            console.error("Transaction Error:", error);
-        }
-    }
-    //await syncNative(provider.connection, userWallet, tokenOwnerAccountA.address);
 
     // Get the tokenA ATA of the userWallet address, and if it does not exist, create it
     const tokenOwnerAccountB = await getOrCreateAssociatedTokenAccount(
@@ -146,25 +131,30 @@ async function main() {
     );
     console.log("User ATA for tokenB:", tokenOwnerAccountB.address.toBase58());
 
-    // Execute the deposit tx
+    // Execute the correct withdraw tx
+    console.log("Amount of bridged tokens to withdraw:", quote.liquidityAmount.toString());
+    let signature;
     try {
-        signature = await program.methods.deposit(quote.liquidityAmount, quote.tokenMaxA, quote.tokenMaxB)
+        signature = await program.methods.withdraw(quote.liquidityAmount, quote.tokenMinA, quote.tokenMinB)
           .accounts(
               {
+                lockbox: lockbox,
+                whirlpoolProgram: orca,
+                whirlpool: whirlpool,
+                tokenProgram: TOKEN_PROGRAM_ID,
                 position: position,
                 positionMint: positionMint,
+                bridgedTokenAccount: bridgedTokenAccount.address,
+                bridgedTokenMint: bridgedTokenMint,
                 pdaPositionAccount: pdaPositionAccount,
-                whirlpool: whirlpool,
                 tokenOwnerAccountA: tokenOwnerAccountA.address,
                 tokenOwnerAccountB: tokenOwnerAccountB.address,
+                feeCollectorTokenOwnerAccountA: feeCollectorTokenOwnerAccountA,
+                feeCollectorTokenOwnerAccountB: feeCollectorTokenOwnerAccountB,
                 tokenVaultA: tokenVaultA,
                 tokenVaultB: tokenVaultB,
                 tickArrayLower: tickArrayLower,
-                tickArrayUpper: tickArrayUpper,
-                bridgedTokenAccount: bridgedTokenAccount.address,
-                bridgedTokenMint: bridgedTokenMint,
-                lockbox: lockbox,
-                whirlpoolProgram: orca
+                tickArrayUpper: tickArrayUpper
               }
           )
           .signers([userWallet])
@@ -177,16 +167,10 @@ async function main() {
             console.error("Transaction Error:", error);
         }
     }
+    console.log("Withdraw tx signature", signature);
+    // tx: 5HZG8kLu4Aqbop8xY3QBh8cNEtL1UZSgiuse8fVwpg65u1GcvsXEc3kqttDtvK7dqSrFBJD16qcT5tXzfSmtdEf8
 
-    console.log("Deposit tx signature", signature);
-    // Wait for program creation confirmation
-    await provider.connection.confirmTransaction({
-        signature: signature,
-        ...(await provider.connection.getLatestBlockhash()),
-    });
-    // tx: exb863x21y91TTmTo36ym84qLP6qHCHRm3hTgQwtn2QZKN51G91P7ZHTHzQRBLNWpavcAvoLpv8rLGaxhEBvfrL
-
-  let tokenAccounts = await provider.connection.getTokenAccountsByOwner(
+  tokenAccounts = await provider.connection.getTokenAccountsByOwner(
     userWallet.publicKey,
     { programId: TOKEN_PROGRAM_ID }
   );
@@ -197,6 +181,8 @@ async function main() {
       console.log("User ATA bridged balance now:", accountData.amount.toString());
     }
   });
+
+  console.log("liquidity(after first withdraw):", (await positionSDK.refreshData()).liquidity.toString());
 
 }
 
